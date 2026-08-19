@@ -4,14 +4,14 @@ const getAllowedHosts = () => {
 }
 
 const isProd = import.meta.env.VITE_DEVELOPMENT !== 'true'
-console.log(getAllowedHosts(), window.location.hostname.toLowerCase())
+
 export const initClientGuard = () => {
     if (typeof window === 'undefined') return
 
     const allowedHosts = getAllowedHosts()
     if (isProd && allowedHosts.length > 0) {
         const host = window.location.hostname.toLowerCase()
-        const permitted = allowedHosts.some(d => host === d || host.endsWith(`.${d}`))
+        const permitted = allowedHosts.some(d => host === d || d.includes(host) || host.endsWith(`${d}`))
         if (!permitted) {
             document.body.innerHTML = '<div style="font-family:sans-serif;padding:2rem;text-align:center">Unauthorized domain.</div>'
             throw new Error('Unauthorized domain')
