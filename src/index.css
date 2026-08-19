@@ -1,0 +1,672 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --black-gradient: linear-gradient(
+    144.39deg,
+    #ffffff -278.56%,
+    #6d6d6d -78.47%,
+    #11101d 91.61%
+  );
+  --card-shadow: 0px 20px 100px -10px rgba(66, 71, 91, 0.1);
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+.cursor::after {
+  display: block;
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 100%;
+  background-color: #fff;
+  animation: cursor 0.6s linear infinite alternate;
+  will-change: opacity;
+}
+
+@keyframes cursor {
+  0%,
+  40% {
+    opacity: 1;
+  }
+
+  60%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.no-scroll {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.no-scroll::-webkit-scrollbar {
+  width: 0 !important;
+  display: none !important;
+}
+
+/* ─── Global scrollbar theming ─── */
+
+/* Dark theme */
+[data-theme="dark"] {
+  scrollbar-color: #333 #1C1C1C;
+  scrollbar-width: thin;
+}
+
+[data-theme="dark"] *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-track {
+  background: #1C1C1C;
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+[data-theme="dark"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-track {
+  background: #0e0e0e;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-thumb {
+  background: #2B2B2B;
+  border-radius: 4px;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  scrollbar-color: #c4d5e8 #eef4fb;
+  scrollbar-width: thin;
+}
+
+[data-theme="light"] *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-theme="light"] *::-webkit-scrollbar-track {
+  background: #eef4fb;
+}
+
+[data-theme="light"] *::-webkit-scrollbar-thumb {
+  background: #c4d5e8;
+  border-radius: 3px;
+}
+
+[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+  background: #a8c1da;
+}
+
+[data-theme="light"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="light"]::-webkit-scrollbar-track {
+  background: #f0f6fc;
+}
+
+[data-theme="light"]::-webkit-scrollbar-thumb {
+  background: #bdd0e4;
+  border-radius: 4px;
+}
+
+[data-theme="light"]::-webkit-scrollbar-thumb:hover {
+  background: #9ab8d4;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: #2B2B2B;
+  border-radius: 4px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background-color: #1C1C1C;
+}
+
+@keyframes slide-to-left {
+  from {
+    right: -200px;
+  }
+  to {
+    right: -1px;
+  }
+}
+
+@keyframes slide-out {
+  from {
+    right: -1px;
+  }
+  to {
+    right: -750px;
+  }
+}
+
+@keyframes slide-to-right {
+  from {
+    left: -400px;
+  }
+  to {
+    left: 0px;
+  }
+}
+
+@keyframes slide-out-left {
+  from {
+    left: 0px;
+  }
+  to {
+    left: -400px;
+  }
+}
+
+/* Watch page: content fade-in when skeleton is replaced */
+@keyframes watch-content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.watch-content-loaded {
+  animation: watch-content-fade-in 0.4s ease-out forwards;
+}
+
+.star {
+  font-size: 24px;
+  color: #ccc;
+  cursor: pointer;
+  position: relative;
+}
+
+.filled {
+  color: gold;
+}
+
+.star.half-filled:after {
+  color: #ccc;
+  content:'\2605';
+  color: gold;
+  position: absolute;
+  margin-left: -20px;
+  width: 10px;
+  overflow: hidden;
+}
+
+
+.mobile_scroll:hover::-webkit-scrollbar-track {
+  background: transparent; /* Track background */
+}
+
+.mobile_scroll:hover {
+  scrollbar-width: thin; /* Firefox - makes scrollbar thinner */
+  scrollbar-color: rgba(0,0,0,0.1) transparent; /* Firefox - color of the scrollbar */
+}
+
+/* For WebKit browsers (Chrome, Safari) */
+.mobile_scroll:hover::-webkit-scrollbar {
+  width: 8px ; /* Adjust width for touch-friendliness */
+  height: 8px; /* Adjust height for horizontal scrolling */
+}
+
+/* BUBBLE ANIMATION */
+
+.bubbles-wrapper {
+  height: 100%;
+  width: 100%;
+  /* background: linear-gradient(180deg, #04fafd, 5%, #119dff, 50%, #030423); */
+  position: absolute;
+}
+.bubbles-wrapper h1 {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  position: absolute;
+  font-family: sans-serif;
+  letter-spacing: 1px;
+  word-spacing: 2px;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 888;
+  text-transform: uppercase;
+}
+.bubbles-wrapper div {
+  height: 60px;
+  width: 60px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50px;
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  animation: 4s linear infinite;
+}
+div .dot {
+  height: 10px;
+  width: 10px;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.5);
+  position: absolute;
+  top: 20%;
+  right: 20%;
+}
+.bubbles-wrapper div:nth-child(1) {
+  top: 20%;
+  left: 20%;
+  animation: animate-bubbles 8s linear infinite;
+}
+.bubbles-wrapper div:nth-child(2) {
+  top: 60%;
+  left: 80%;
+  animation: animate-bubbles 10s linear infinite;
+}
+.bubbles-wrapper div:nth-child(3) {
+  top: 40%;
+  left: 40%;
+  animation: animate-bubbles 3s linear infinite;
+}
+.bubbles-wrapper div:nth-child(4) {
+  top: 66%;
+  left: 30%;
+  animation: animate-bubbles 7s linear infinite;
+}
+.bubbles-wrapper div:nth-child(5) {
+  top: 90%;
+  left: 10%;
+  animation: animate-bubbles 9s linear infinite;
+}
+.bubbles-wrapper div:nth-child(6) {
+  top: 30%;
+  left: 60%;
+  animation: animate-bubbles 5s linear infinite;
+}
+.bubbles-wrapper div:nth-child(7) {
+  top: 70%;
+  left: 20%;
+  animation: animate-bubbles 8s linear infinite;
+}
+.bubbles-wrapper div:nth-child(8) {
+  top: 75%;
+  left: 60%;
+  animation: animate-bubbles 10s linear infinite;
+}
+.bubbles-wrapper div:nth-child(9) {
+  top: 50%;
+  left: 50%;
+  animation: animate-bubbles 6s linear infinite;
+}
+.bubbles-wrapper div:nth-child(10) {
+  top: 45%;
+  left: 20%;
+  animation: animate-bubbles 10s linear infinite;
+}
+.bubbles-wrapper div:nth-child(11) {
+  top: 10%;
+  left: 90%;
+  animation: animate-bubbles 9s linear infinite;
+}
+.bubbles-wrapper div:nth-child(12) {
+  top: 20%;
+  left: 70%;
+  animation: animate-bubbles 7s linear infinite;
+}
+.bubbles-wrapper div:nth-child(13) {
+  top: 20%;
+  left: 20%;
+  animation: animate-bubbles 8s linear infinite;
+}
+.bubbles-wrapper div:nth-child(14) {
+  top: 60%;
+  left: 5%;
+  animation: animate-bubbles 6s linear infinite;
+}
+.bubbles-wrapper div:nth-child(15) {
+  top: 90%;
+  left: 80%;
+  animation: animate-bubbles 9s linear infinite;
+}
+@keyframes animate-bubbles {
+  0% {
+    transform: scale(0) translateY(0) rotate(70deg);
+  }
+  100% {
+    transform: scale(1.3) translateY(-100px) rotate(360deg);
+  }
+}
+
+/* SUBMARINE */
+.submarine-svg{
+  height:100px;
+}
+
+.content{
+  position: absolute;
+  display:block;
+}
+
+.bubble {
+    width: 30px;
+    height: 30px;
+    background: lightblue;
+    border-radius: 200px;
+    -moz-border-radius: 200px;
+    -webkit-border-radius: 200px;
+    position: absolute;
+}
+
+.x1 {
+    -webkit-transform: scale(0.9);
+    -moz-transform: scale(0.9);
+    transform: scale(0.9);
+    opacity: 0.2;
+    -webkit-animation: moveBubblesX 15s linear infinite, moveBubblesY 6s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 15s linear infinite, moveBubblesY 6s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 15s linear infinite, moveBubblesY 6s ease-in-out infinite alternate;
+}
+
+.x2 {
+    left: 200px;
+    -webkit-transform: scale(0.6);
+    -moz-transform: scale(0.6);
+    transform: scale(0.6);
+    opacity: 0.5;
+    -webkit-animation: moveBubblesX 25s linear infinite, moveBubblesY 8s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 25s linear infinite, moveBubblesY 8s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 25s linear infinite, moveBubblesY 8s ease-in-out infinite alternate;
+}
+.x3 {
+    left: 350px;
+    -webkit-transform: scale(0.8);
+    -moz-transform: scale(0.8);
+    transform: scale(0.8);
+    opacity: 0.3;
+    -webkit-animation: moveBubblesX 20s linear infinite, moveBubblesY 4s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 20s linear infinite, moveBubblesY 4s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 20s linear infinite, moveBubblesY 4s ease-in-out infinite alternate;
+}
+
+.x4 {
+    left: 470px;
+    -webkit-transform: scale(0.75);
+    -moz-transform: scale(0.75);
+    transform: scale(0.75);
+    opacity: 0.35;
+    -webkit-animation: moveBubblesX 18s linear infinite, moveBubblesY 3s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 18s linear infinite, moveBubblesY 3s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 18s linear infinite, moveBubblesY 3s ease-in-out infinite alternate;
+}
+.x5 {
+    left: 150px;
+    -webkit-transform: scale(0.8);
+    -moz-transform: scale(0.8);
+    transform: scale(0.8);
+    opacity: 0.3; 
+    -webkit-animation: moveBubblesX 17s linear infinite, moveBubblesY 5s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 17s linear infinite, moveBubblesY 5s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 17s linear infinite, moveBubblesY 5s ease-in-out infinite alternate;
+}
+
+.x6 {
+    -webkit-transform: scale(0.9);
+    -moz-transform: scale(0.9);
+    transform: scale(0.9);
+    opacity: 0.2;
+    -webkit-animation: moveBubblesX 15s linear infinite, moveBubblesYOpposite 4s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 15s linear infinite, moveBubblesYOpposite 4s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 15s linear infinite, moveBubblesYOpposite 4s ease-in-out infinite alternate;
+}
+
+.x7 {
+    left: 200px;
+    -webkit-transform: scale(0.6);
+    -moz-transform: scale(0.6);
+    transform: scale(0.6);
+    opacity: 0.5;
+    -webkit-animation: moveBubblesX 21s linear infinite, moveBubblesYOpposite 3s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 21s linear infinite, moveBubblesYOpposite 3s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 21s linear infinite, moveBubblesYOpposite 3s ease-in-out infinite alternate;
+}
+.x8 {
+    left: 350px;
+    -webkit-transform: scale(0.8);
+    -moz-transform: scale(0.8);
+    transform: scale(0.8);
+    opacity: 0.3;
+    -webkit-animation: moveBubblesX 16s linear infinite, moveBubblesYOpposite 6s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 16s linear infinite, moveBubblesYOpposite 6s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 16s linear infinite, moveBubblesYOpposite 6s ease-in-out infinite alternate;
+}
+
+.x9 {
+    left: 470px;
+    -webkit-transform: scale(0.75);
+    -moz-transform: scale(0.75);
+    transform: scale(0.75);
+    opacity: 0.35;
+    -webkit-animation: moveBubblesX 24s linear infinite, moveBubblesYOpposite 5s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 24s linear infinite, moveBubblesYOpposite 5s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 24s linear infinite, moveBubblesYOpposite 5s ease-in-out infinite alternate;
+}
+.x10 {
+    left: 150px;
+    -webkit-transform: scale(0.8);
+    -moz-transform: scale(0.8);
+    transform: scale(0.8);
+    opacity: 0.3; 
+    -webkit-animation: moveBubblesX 17s linear infinite, moveBubblesYOpposite 5s ease-in-out infinite alternate;
+    -moz-animation: moveBubblesX 17s linear infinite, moveBubblesYOpposite 5s ease-in-out infinite alternate;
+    -o-animation: moveBubblesX 17s linear infinite, moveBubblesYOpposite 5s ease-in-out infinite alternate;
+}
+
+#bubbles { 
+  height: 100%;
+  padding: 150px 0;
+}
+
+#submarine{
+  animation: MoveUpDown 10s easeInOut infinite;
+  -webkit-animation: MoveUpDown 10s ease-In-Out infinite;
+  transform-origin: 50% 50%;
+}
+
+@keyframes MoveUpDown {
+     0% {transform: none;}
+    25% {transform:  translateY(-50px) translateX(20px) rotate(5deg);}
+    50% {transform:  translateY(25px) translateX(-25px) rotate(-5deg);}
+    75% {transform:  translateY(-50px) translateX(25px) rotate(-5deg);}
+    100% {transform:  translateY(0px) translateX(0px) rotate(0deg);}
+}
+
+@keyframes moveBubblesX { 
+    0% { 
+        left: -1%;
+    }
+    100% { 
+        left: 101%;
+    }
+}
+
+@keyframes moveBubblesY { 
+    0% { 
+        margin-top:0px;
+    }
+    100% { 
+        margin-top:150px;
+    }
+}
+
+@keyframes moveBubblesYOpposite { 
+    0% { 
+        margin-top:0px;
+    }
+    100% { 
+        margin-top:-100px;
+    }
+}
+
+/* FISH */
+
+svg#fish {
+  top: 5em;
+}
+/* Fish Animation */
+svg.fish{
+  overflow:visible;
+}
+
+@-webkit-keyframes swim
+{
+	0% {margin-left: -235px}
+	90% {margin-left: 100%;}
+	100% {margin-left: 100%;}
+}
+
+@keyframes swim
+{
+	0% {margin-left: -235px}
+	70% {margin-left: 100%;}
+	100% {margin-left: 100%;}
+}
+
+.fish{
+	width: 235px;
+	height: 104px;
+	margin-left: -235px;
+	position: absolute;	
+	animation: swim 20s;
+	-webkit-animation: swim 20s;
+	animation-iteration-count: infinite;
+	-webkit-animation-iteration-count: infinite;
+	animation-timing-function: linear;
+	-webkit-animation-timing-function: linear;
+}
+
+svg #fish1,
+svg #fish2,
+svg #fish3,
+svg #fish4,
+svg #fish5,
+svg #fish6 {
+  fill:#1F2937;
+  -moz-animation: bounce 2s infinite;
+  -webkit-animation: bounce 2s infinite;
+  animation: bounce 2s infinite;
+}
+
+svg #fish2{
+	animation-delay: 0.5s;
+	-webkit-animation-delay: 0.5s;
+}
+
+svg #fish3{
+	animation-delay: 0.2s;
+	-webkit-animation-delay: 0.2s;
+}
+
+svg #fish4{
+	animation-delay: 0.4s;
+	-webkit-animation-delay: 0.4s;
+}
+
+svg #fish5{
+	animation-delay: 0.1s;
+	-webkit-animation-delay: 0.1s;
+}
+
+svg #fish6{
+	animation-delay: 0.3s;
+	-webkit-animation-delay: 0.3s;
+}
+
+/**/
+@-moz-keyframes bounce {
+  0%, 50%, 100% {
+    -moz-transform: translateY(0);
+    transform: translateY(0);
+  }
+  25% {
+    -moz-transform: translateY(-5px);
+    transform: translateY(-5px);
+  }
+  75% {
+    -moz-transform: translateY(-3px);
+    transform: translateY(-3px);
+  }
+}
+@-webkit-keyframes bounce {
+  0%, 50%, 100% {
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
+  25% {
+    -webkit-transform: translateY(-5px);
+    transform: translateY(-5px);
+  }
+  75% {
+    -webkit-transform: translateY(-3px);
+    transform: translateY(-3px);
+  }
+}
+@keyframes bounce {
+  0%, 50%, 100% {
+    -moz-transform: translateY(0);
+    -ms-transform: translateY(0);
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
+  25% {
+    -moz-transform: translateY(-5px);
+    -ms-transform: translateY(-5px);
+    -webkit-transform: translateY(-5px);
+    transform: translateY(-5px);
+  }
+  75% {
+    -moz-transform: translateY(-3px);
+    -ms-transform: translateY(-3px);
+    -webkit-transform: translateY(-3px);
+    transform: translateY(-3px);
+  }
+}
