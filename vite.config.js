@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
         deadCodeInjection: false,
         // debugProtection: true,
         // debugProtectionInterval: 3000,
-        disableConsoleOutput: true,
+        // disableConsoleOutput: true,
         identifierNamesGenerator: 'hexadecimal',
         renameGlobals: false,
         selfDefending: true,
