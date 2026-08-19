@@ -4,7 +4,7 @@ const getAllowedHosts = () => {
 }
 
 const isProd = import.meta.env.VITE_DEVELOPMENT !== 'true'
-
+console.log(getAllowedHosts(), window.location.hostname.toLowerCase())
 export const initClientGuard = () => {
     if (typeof window === 'undefined') return
 
