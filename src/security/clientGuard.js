@@ -4,6 +4,7 @@ const getAllowedHosts = () => {
 }
 
 const isProd = import.meta.env.VITE_DEVELOPMENT !== 'true'
+const blockDevtools = import.meta.env.VITE_BLOCK_DEVTOOLS === 'true'
 
 export const initClientGuard = () => {
     if (typeof window === 'undefined') return
@@ -11,14 +12,14 @@ export const initClientGuard = () => {
     const allowedHosts = getAllowedHosts()
     if (isProd && allowedHosts.length > 0) {
         const host = window.location.hostname.toLowerCase()
-        const permitted = allowedHosts.some(d => host === d || d.includes(host) || host.endsWith(`${d}`))
+        const permitted = allowedHosts.some(d => host === d || host.includes(d) || host.endsWith(`${d}`))
         if (!permitted) {
             document.body.innerHTML = '<div style="font-family:sans-serif;padding:2rem;text-align:center">Unauthorized domain.</div>'
             throw new Error('Unauthorized domain')
         }
     }
 
-    if (isProd) {
+    if (isProd && blockDevtools) {
         document.addEventListener('contextmenu', (e) => e.preventDefault())
 
         document.addEventListener('keydown', (e) => {

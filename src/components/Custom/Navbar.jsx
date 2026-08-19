@@ -87,7 +87,7 @@ const ProfileDropdown = ({
     isLight, avatarSrc, userName, userEmail, userRole, isVerified,
     stats, isLoading, expenses, baseCurrency, statTone, theme, changeTheme, signOut,
 }) => (
-    <div className={`w-72 rounded-2xl shadow-2xl border overflow-hidden ${isLight ? 'bg-white border-slate-200' : 'bg-[#141414] border-[#2a2a2a]'}`}>
+    <div className={`w-full sm:w-72 rounded-2xl shadow-2xl border overflow-hidden ${isLight ? 'bg-white border-slate-200' : 'bg-[#141414] border-[#2a2a2a]'}`}>
         {/* Profile header */}
         <div className={`px-5 pt-5 pb-4 text-center border-b ${isLight ? 'border-slate-100 bg-gradient-to-b from-slate-50 to-white' : 'border-[#222] bg-gradient-to-b from-[#161616] to-[#141414]'}`}>
             <div className="relative inline-block">
@@ -339,11 +339,11 @@ const Navbar = ({ theme, setTheme, setUser }) => {
         <header className={`${main.font} sticky top-0 z-50 w-full transition-all ${isLight ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-sm' : 'bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-[#1f1f1f] shadow-lg shadow-black/30'}`}>
             <div className={`h-px w-full ${isLight ? 'bg-gradient-to-r from-transparent via-blue-400/60 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-500/40 to-transparent'}`} />
 
-            <div className="max-w-[1550px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-[1550px] mx-auto px-3 sm:px-6 lg:px-8">
                 {/* Main bar */}
-                <div className="flex items-center justify-between gap-4 h-[60px] sm:h-[64px]">
+                <div className="flex items-center justify-between gap-2 sm:gap-4 min-h-[56px] sm:min-h-[64px] py-2 sm:py-0">
                     {/* Left: brand + breadcrumb context (not nav) */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                         <button
                             type="button"
                             data-mobile-toggle
@@ -354,19 +354,25 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                             <Menu size={20} />
                         </button>
 
-                        <Link to="/budget" className="flex items-center gap-2.5 shrink-0 group">
-                            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-[1.03] ${isLight ? 'bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-md shadow-blue-200/40' : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/25'}`}>
+                        <Link to="/budget" className="flex items-center gap-2 shrink-0 group min-w-0">
+                            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-[1.03] shrink-0 ${isLight ? 'bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-md shadow-blue-200/40' : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/25'}`}>
                                 <FontAwesomeIcon icon={faWallet} className="text-sm sm:text-base" />
                             </div>
-                            <div className="hidden sm:block">
-                                <p className={`font-bold text-sm leading-none ${isLight ? 'text-slate-800' : 'text-white'}`}>Budget</p>
-                                <p className={`text-[10px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Finance tracker</p>
+                            <div className="min-w-0 hidden sm:block">
+                                <p className={`font-bold text-sm leading-none truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>Budget</p>
+                                <p className={`text-[10px] mt-0.5 truncate hidden sm:block ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Finance tracker</p>
                             </div>
                         </Link>
 
-                        <div className={`hidden sm:block w-px h-8 ${isLight ? 'bg-slate-200' : 'bg-[#2a2a2a]'}`} />
+                        {/* Mobile: active tab chip */}
+                        <div className={`sm:hidden min-w-0 flex-1 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>
+                            <p className="text-[11px] font-semibold truncate leading-tight">{activeLabel}</p>
+                            <p className={`text-[10px] truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{monthLabel}</p>
+                        </div>
 
-                        {/* Context breadcrumb — shows where you are, not duplicate tabs */}
+                        <div className={`hidden sm:block w-px h-8 shrink-0 ${isLight ? 'bg-slate-200' : 'bg-[#2a2a2a]'}`} />
+
+                        {/* Context breadcrumb — desktop/tablet */}
                         <div className="hidden sm:flex flex-col min-w-0">
                             <div className="flex items-center gap-1.5 text-[11px] truncate">
                                 <span className={isLight ? 'text-slate-400' : 'text-gray-500'}>{monthLabel}</span>
@@ -408,7 +414,7 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                     </div>
 
                     {/* Right: actions */}
-                    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                         {/* Quick actions — shortcuts, not full tab nav */}
                         <div className="relative hidden sm:block" ref={quickRef}>
                             <button
@@ -455,7 +461,16 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                         <button
                             type="button"
                             onClick={changeTheme}
-                            className={`hidden sm:flex w-9 h-9 rounded-xl items-center justify-center transition-colors ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#161616] hover:text-amber-400'}`}
+                            className={`md:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#161616] hover:text-amber-400'}`}
+                            title={isLight ? 'Dark mode' : 'Light mode'}
+                        >
+                            <FontAwesomeIcon icon={isLight ? faMoon : faSun} className="text-sm" />
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={changeTheme}
+                            className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center transition-colors ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#161616] hover:text-amber-400'}`}
                             title={isLight ? 'Dark mode' : 'Light mode'}
                         >
                             <FontAwesomeIcon icon={isLight ? faMoon : faSun} />
@@ -467,13 +482,13 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                                 <button
                                     type="button"
                                     onClick={() => setMenuOpen(!menuOpen)}
-                                    className={`flex items-center gap-1.5 h-9 pl-1 pr-2.5 rounded-xl transition-all ${menuOpen ? (isLight ? 'bg-slate-100 ring-1 ring-slate-200' : 'bg-[#161616] ring-1 ring-[#333]') : (isLight ? 'hover:bg-slate-50' : 'hover:bg-[#111]')}`}
+                                    className={`flex items-center gap-1.5 h-9 pl-1 pr-1.5 sm:pr-2.5 rounded-xl transition-all ${menuOpen ? (isLight ? 'bg-slate-100 ring-1 ring-slate-200' : 'bg-[#161616] ring-1 ring-[#333]') : (isLight ? 'hover:bg-slate-50' : 'hover:bg-[#111]')}`}
                                 >
                                     <img src={avatarSrc} alt={userName} className="w-7 h-7 rounded-full object-cover ring-2 ring-blue-500/25 shrink-0" onError={(e) => { e.target.src = Avatar }} />
                                     <FontAwesomeIcon icon={faChevronDown} className={`hidden sm:block text-[9px] transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''} ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
                                 </button>
                                 {menuOpen && (
-                                    <div className="absolute right-0 mt-2 z-50">
+                                    <div className="fixed inset-x-3 top-[60px] z-[60] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-auto max-w-md mx-auto sm:mx-0">
                                         <ProfileDropdown
                                             isLight={isLight}
                                             avatarSrc={avatarSrc}
@@ -577,19 +592,27 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                     </div>
                 )}
 
-                {/* Mobile stats strip — compact, not nav */}
-                <div className={`md:hidden flex items-center justify-between gap-2 pb-2.5 -mt-1`}>
-                    <div className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-lg ${isLight ? 'bg-blue-50 text-blue-700' : 'bg-blue-950/30 text-blue-300'}`}>
-                        <FontAwesomeIcon icon={faCalendarAlt} className="opacity-70" />
-                        {monthLabel}
+                {/* Mobile stats strip */}
+                <div className="md:hidden pb-3 space-y-2">
+                    <div className={`grid grid-cols-3 gap-2 rounded-xl p-2.5 ${isLight ? 'bg-slate-50 border border-slate-200/80' : 'bg-[#111] border border-[#252525]'}`}>
+                        {[
+                            { l: 'Income', v: stats.income, t: 'income' },
+                            { l: 'Spent', v: stats.expenses, t: 'expense' },
+                            { l: 'Balance', v: stats.balance, t: 'balance' },
+                        ].map(s => (
+                            <div key={s.l} className="text-center min-w-0 px-0.5">
+                                <p className={`text-[9px] uppercase font-semibold tracking-wide truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.l}</p>
+                                <p className={`text-[11px] sm:text-xs font-bold tabular-nums truncate ${statTone(s.t)}`}>
+                                    {isLoading && !expenses?.length ? '—' : formatMoney(s.v, activeViewCurrency)}
+                                </p>
+                            </div>
+                        ))}
                     </div>
-                    <div className="flex items-center gap-3 text-[11px] tabular-nums">
-                        <span className={statTone('income')}>{formatMoney(stats.income, activeViewCurrency)}</span>
-                        <span className={isLight ? 'text-slate-300' : 'text-gray-600'}>|</span>
-                        <span className={statTone('expense')}>{formatMoney(stats.expenses, activeViewCurrency)}</span>
-                        <span className={isLight ? 'text-slate-300' : 'text-gray-600'}>|</span>
-                        <span className={`font-bold ${statTone('balance')}`}>{formatMoney(stats.balance, activeViewCurrency)}</span>
-                    </div>
+                    {viewingBudgetOwner && (
+                        <p className={`text-[10px] text-center font-medium ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>
+                            Viewing shared budget · {viewingBudgetOwner.username}
+                        </p>
+                    )}
                 </div>
             </div>
 
