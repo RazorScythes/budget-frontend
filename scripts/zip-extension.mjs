@@ -57,6 +57,8 @@ if (!existsSync(extDir)) {
     process.exit(1)
 }
 
+execSync(`node "${join(dirname(fileURLToPath(import.meta.url)), 'sync-icons.mjs')}"`, { stdio: 'inherit' })
+
 const env = loadEnvFile(envPath)
 const { apiBaseUrl, environment } = resolveApiConfig(env)
 const defaults = {

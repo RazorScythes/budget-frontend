@@ -27,9 +27,11 @@ body.options-page {
   border-radius: 14px;
 }
 
-.options-page .brand-mark-lg svg {
-  width: 26px;
-  height: 26px;
+.options-page .brand-mark-lg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .options-page .page-header h1 {
