@@ -4,17 +4,127 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
     faPiggyBank, faCoins, faMoneyBillWave, faHistory, faPlus, faPen, faTrash,
     faCheck, faTimes, faSpinner, faBuildingColumns, faWallet, faArrowUp, faArrowDown,
-    faCalendarDay, faFilter,
+    faCalendarDay, faFilter, faPercent,
 } from '@fortawesome/free-solid-svg-icons'
 import { DENOMINATIONS } from './constants'
 import { AnimateIn, ModalOverlay } from './SharedComponents'
 import {
     getBudgetSavingsHistory, deleteBudgetSavingsHistory,
     createBudgetSavingsAccount, updateBudgetSavingsAccount, deleteBudgetSavingsAccount,
+    processSavingsInterest,
 } from '../../../actions/budget'
 import {
     calcAccountTotal, calcAllSavingsTotal, countsFromDenominations, emptyDenominations,
+    calcInterestBreakdown, INTEREST_FREQUENCY_OPTIONS,
 } from '../../../utils/savings'
+
+const fmtInterestAmount = (value) =>
+    `₱${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+const ACCRUAL_LABELS = {
+    daily: 'Daily accrual',
+    weekly: 'Weekly accrual',
+    monthly: 'Monthly accrual',
+    yearly: 'Yearly accrual',
+}
+
+const InterestBreakdownPanel = ({ isLight, breakdown, withholdingTax, activeFrequency, compact = false }) => {
+    if (!breakdown) return null
+
+    const items = [
+        { key: 'yearly', label: 'Per year', short: 'Year', data: breakdown.yearly },
+        { key: 'monthly', label: 'Per month', short: 'Month', data: breakdown.monthly },
+        { key: 'daily', label: 'Per day', short: 'Day', data: breakdown.daily },
+    ]
+
+    const accrualLabel = ACCRUAL_LABELS[activeFrequency] || 'Auto accrual'
+    const taxPct = withholdingTax || 20
+
+    const shellCls = isLight
+        ? 'border-slate-200 bg-slate-50/80'
+        : 'border-[#2a2a2a] bg-[#111]/60'
+    const labelCls = `text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`
+    const metaCls = `text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`
+    const valueCls = `text-sm font-bold tabular-nums ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`
+
+    if (compact) {
+        return (
+            <div className={`rounded-xl border border-solid overflow-hidden ${shellCls}`}>
+                <div className={`px-3 py-2 border-b border-solid flex items-center justify-between gap-2 ${isLight ? 'border-slate-200' : 'border-[#222]'}`}>
+                    <span className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Net interest
+                    </span>
+                    <span className={metaCls}>{taxPct}% tax</span>
+                </div>
+                <div className={`flex divide-x divide-solid ${isLight ? 'divide-slate-200' : 'divide-[#222]'}`}>
+                    {items.map(({ key, short, data }) => (
+                        <div key={key} className="flex-1 min-w-0 px-2 py-2.5 text-center">
+                            <p className={`text-xs font-medium mb-0.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{short}</p>
+                            <p className={valueCls}>+{fmtInterestAmount(data.net)}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className={`rounded-xl border border-solid overflow-hidden ${shellCls}`}>
+            <div className={`px-4 py-3 border-b border-solid ${isLight ? 'border-slate-200 bg-white/60' : 'border-[#222] bg-[#0e0e0e]/60'}`}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                        <p className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                            Interest projection
+                        </p>
+                        <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                            Net earnings after {taxPct}% withholding
+                        </p>
+                    </div>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/40 text-indigo-300'}`}>
+                        {accrualLabel}
+                    </span>
+                </div>
+            </div>
+
+            <div className={`divide-y divide-solid ${isLight ? 'divide-slate-200' : 'divide-[#222]'}`}>
+                {items.map(({ key, label, data }) => {
+                    const isActive = activeFrequency === key
+                    return (
+                        <div
+                            key={key}
+                            className={`px-4 py-3 flex items-start justify-between gap-4 ${
+                                isActive ? (isLight ? 'bg-indigo-50/50' : 'bg-indigo-950/20') : ''
+                            }`}
+                        >
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={labelCls}>{label}</span>
+                                    {isActive && (
+                                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-900/50 text-indigo-300'}`}>
+                                            Accrual
+                                        </span>
+                                    )}
+                                </div>
+                                <p className={`${metaCls} mt-1`}>
+                                    Gross {fmtInterestAmount(data.gross)}
+                                    <span className={`mx-1.5 ${isLight ? 'text-slate-300' : 'text-gray-600'}`}>·</span>
+                                    Tax {fmtInterestAmount(data.tax)}
+                                </p>
+                            </div>
+                            <p className={`${valueCls} shrink-0 text-right`}>+{fmtInterestAmount(data.net)}</p>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {activeFrequency === 'weekly' && (
+                <p className={`px-4 py-2.5 text-xs border-t border-solid ${isLight ? 'border-slate-200 text-slate-400 bg-white/40' : 'border-[#222] text-gray-500 bg-[#0e0e0e]/40'}`}>
+                    Weekly accrual — figures below show equivalent day, month, and year rates.
+                </p>
+            )}
+        </div>
+    )
+}
 
 const DeleteConfirmModal = ({ isLight, onConfirm, onCancel, title, message }) => (
     <ModalOverlay isLight={isLight} onClose={onCancel}>
@@ -173,6 +283,7 @@ const SavingsHistoryPanel = ({ isLight, card, inputCls, formatCurrency, savingsH
                                 const isUp = entry.diffTotal > 0
                                 const isDown = entry.diffTotal < 0
                                 const isBank = entry.category === 'bank'
+                                const isInterest = entry.source === 'interest'
                                 const time = new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
                                 return (
@@ -195,6 +306,9 @@ const SavingsHistoryPanel = ({ isLight, card, inputCls, formatCurrency, savingsH
                                                             <p className={`text-xs font-semibold truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>{entry.accountName || 'Savings'}</p>
                                                             <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                 {time} · {isBank ? 'Bank' : 'Cash'}
+                                                                {isInterest && (
+                                                                    <span className={`ml-1.5 font-semibold ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>· Interest</span>
+                                                                )}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -217,6 +331,12 @@ const SavingsHistoryPanel = ({ isLight, card, inputCls, formatCurrency, savingsH
                                                         )}
                                                     </div>
                                                 </div>
+
+                                                {entry.note && (
+                                                    <p className={`text-[10px] mb-2 px-2 py-1.5 rounded-md ${isLight ? 'bg-amber-50 text-amber-800' : 'bg-amber-900/20 text-amber-300'}`}>
+                                                        {entry.note}
+                                                    </p>
+                                                )}
 
                                                 <div className="flex items-center gap-2 text-[10px] mb-2">
                                                     <span className={`px-2 py-1 rounded-md ${isLight ? 'bg-slate-50 text-slate-600' : 'bg-[#111] text-gray-300'}`}>
@@ -275,10 +395,19 @@ const SavingsHistoryPanel = ({ isLight, card, inputCls, formatCurrency, savingsH
 
 const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving }) => {
     const isEdit = !!account?._id
+    const isBankAccount = isEdit ? account?.category === 'bank' : false
     const [name, setName] = useState(account?.name || '')
     const [category, setCategory] = useState(account?.category || 'cash')
     const [bankTotal, setBankTotal] = useState(account?.category === 'bank' ? String(account.total ?? '') : '')
+    const [interestRate, setInterestRate] = useState(account?.category === 'bank' ? String(account.interestRate ?? '') : '')
+    const [withholdingTax, setWithholdingTax] = useState(
+        account?.category === 'bank' ? String(account.withholdingTax ?? 20) : '20',
+    )
+    const [interestFrequency, setInterestFrequency] = useState(account?.interestFrequency || 'daily')
+    const [interestEnabled, setInterestEnabled] = useState(account?.interestEnabled !== false)
     const [counts, setCounts] = useState(() => countsFromDenominations(account?.denominations || emptyDenominations()))
+
+    const showBankFields = category === 'bank' || isBankAccount
 
     const billsDenoms = DENOMINATIONS.filter(d => d.type === 'bill')
     const coinsDenoms = DENOMINATIONS.filter(d => d.type === 'coin')
@@ -287,11 +416,22 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
         DENOMINATIONS.reduce((sum, d) => sum + ((counts[d.value] === '' ? 0 : parseInt(counts[d.value], 10) || 0) * d.value), 0),
     [counts])
 
+    const interestBreakdown = useMemo(() => {
+        if (!showBankFields) return null
+        const rate = parseFloat(interestRate) || 0
+        if (rate <= 0 || !interestEnabled) return null
+        return calcInterestBreakdown(parseFloat(bankTotal) || 0, rate, withholdingTax)
+    }, [showBankFields, bankTotal, interestRate, withholdingTax, interestEnabled])
+
     const handleSubmit = () => {
         if (!name.trim()) return
-        const payload = { name: name.trim(), category }
-        if (category === 'bank') {
+        const payload = { name: name.trim(), category: isBankAccount ? 'bank' : category }
+        if (showBankFields) {
             payload.total = parseFloat(bankTotal) || 0
+            payload.interestRate = parseFloat(interestRate) || 0
+            payload.withholdingTax = parseFloat(withholdingTax) || 20
+            payload.interestFrequency = interestFrequency
+            payload.interestEnabled = interestEnabled && (parseFloat(interestRate) || 0) > 0
         } else {
             const denominations = {}
             DENOMINATIONS.forEach(d => {
@@ -354,10 +494,70 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                         </div>
                     )}
 
-                    {category === 'bank' ? (
-                        <div>
-                            <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Total balance</label>
-                            <input type="number" min="0" step="0.01" value={bankTotal} onChange={e => setBankTotal(e.target.value)} placeholder="0.00" className={`${inputCls} ${noSpinner}`} />
+                    {showBankFields ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Total balance</label>
+                                <input type="number" min="0" step="0.01" value={bankTotal} onChange={e => setBankTotal(e.target.value)} placeholder="0.00" className={`${inputCls} ${noSpinner}`} />
+                            </div>
+
+                            <div className={`rounded-xl border border-solid p-4 space-y-3 ${isLight ? 'border-indigo-100 bg-indigo-50/40' : 'border-indigo-900/30 bg-indigo-950/10'}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faPercent} className={`text-xs ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
+                                        <span className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>Interest settings</span>
+                                    </div>
+                                    <label className={`flex items-center gap-2 text-xs cursor-pointer ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={interestEnabled}
+                                            onChange={e => setInterestEnabled(e.target.checked)}
+                                            className="rounded border-slate-300"
+                                        />
+                                        Auto-accrue
+                                    </label>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Annual rate (%)</label>
+                                        <input type="number" min="0" step="0.01" value={interestRate} onChange={e => setInterestRate(e.target.value)} placeholder="e.g. 3.25" className={`${inputCls} ${noSpinner}`} />
+                                    </div>
+                                    <div>
+                                        <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Withholding tax (%)</label>
+                                        <input type="number" min="0" max="100" step="0.01" value={withholdingTax} onChange={e => setWithholdingTax(e.target.value)} placeholder="20" className={`${inputCls} ${noSpinner}`} />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Accrual frequency</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {INTEREST_FREQUENCY_OPTIONS.map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => setInterestFrequency(opt.id)}
+                                                className={`px-3 py-2 rounded-lg text-xs font-semibold border border-solid transition-all ${
+                                                    interestFrequency === opt.id
+                                                        ? (isLight ? 'border-indigo-300 bg-indigo-100 text-indigo-700' : 'border-indigo-700 bg-indigo-900/30 text-indigo-300')
+                                                        : (isLight ? 'border-slate-200 text-slate-500 hover:border-slate-300' : 'border-[#2a2a2a] text-gray-500 hover:border-[#333]')
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {interestBreakdown && (
+                                <InterestBreakdownPanel
+                                    isLight={isLight}
+                                    breakdown={interestBreakdown}
+                                    withholdingTax={withholdingTax}
+                                    activeFrequency={interestFrequency}
+                                />
+                            )}
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -441,6 +641,15 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
     useEffect(() => {
         dispatch(getBudgetSavingsHistory({}))
     }, [dispatch])
+
+    useEffect(() => {
+        if (isViewer) return
+        dispatch(processSavingsInterest()).then((action) => {
+            if (action?.payload?.data?.accountsUpdated > 0) {
+                dispatch(getBudgetSavingsHistory({}))
+            }
+        })
+    }, [dispatch, isViewer])
 
     const grandTotal = useMemo(() => calcAllSavingsTotal(accounts), [accounts])
 
@@ -680,6 +889,11 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                         <span className={`inline-flex mt-1 text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${isCash ? (isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-900/30 text-emerald-400') : (isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/30 text-indigo-400')}`}>
                                                             {isCash ? 'Cash' : 'Bank'}
                                                         </span>
+                                                        {!isCash && (account.interestRate > 0) && account.interestEnabled !== false && (
+                                                            <span className={`inline-flex ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${isLight ? 'bg-amber-50 text-amber-700' : 'bg-amber-900/30 text-amber-400'}`}>
+                                                                {account.interestRate}% · {account.interestFrequency || 'daily'}
+                                                            </span>
+                                                        )}
                                                         <p className={`text-lg font-bold mt-2 tabular-nums ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>{formatCurrency(total)}</p>
                                                     </div>
                                                 </div>
@@ -696,6 +910,18 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {!isCash && (account.interestRate > 0) && account.interestEnabled !== false && (
+                                                <div className="mt-3">
+                                                    <InterestBreakdownPanel
+                                                        isLight={isLight}
+                                                        breakdown={calcInterestBreakdown(total, account.interestRate, account.withholdingTax ?? 20)}
+                                                        withholdingTax={account.withholdingTax ?? 20}
+                                                        activeFrequency={account.interestFrequency || 'daily'}
+                                                        compact
+                                                    />
+                                                </div>
+                                            )}
 
                                             {isCash && (
                                                 <button type="button" onClick={() => setExpandedId(isExpanded ? null : account._id)}

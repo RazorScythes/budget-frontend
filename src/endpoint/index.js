@@ -57,6 +57,7 @@ export const unshareBudgetCategory = (formData) => endpoint.post('/budget/catego
 export const importBudgetCSV = (formData) => endpoint.post('/budget/import-csv', formData)
 export const searchBudgetExpenses = (params) => endpoint.get('/budget/search', { params })
 export const processRecurring = () => endpoint.post('/budget/recurring/process')
+export const processSavingsInterest = () => endpoint.post('/budget/savings/interest/process')
 export const getBudgetExpenses = (params) => endpoint.get('/budget/expenses', { params })
 export const createBudgetExpense = (formData) => endpoint.post('/budget/expense', formData)
 export const updateBudgetExpense = (formData) => endpoint.patch('/budget/expense', formData)

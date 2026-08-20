@@ -294,6 +294,16 @@ export const processRecurring = createAsyncThunk('budget/processRecurring', asyn
     }
 })
 
+export const processSavingsInterest = createAsyncThunk('budget/processSavingsInterest', async (_, thunkAPI) => {
+    try {
+        const response = await api.processSavingsInterest()
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to process savings interest' } })
+    }
+})
+
 // ==================== SAVINGS ====================
 
 export const getBudgetSavings = createAsyncThunk('budget/getSavings', async (params, thunkAPI) => {
@@ -814,6 +824,12 @@ export const budgetSlice = createSlice({
             if (action.payload.data.alert) state.alert = action.payload.data.alert
         })
         builder.addCase(processRecurring.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+
+        builder.addCase(processSavingsInterest.fulfilled, (state, action) => {
+            if (action.payload?.data?.result) state.savingsAccounts = action.payload.data.result
+            if (action.payload?.data?.alert) state.alert = action.payload.data.alert
+        })
+        builder.addCase(processSavingsInterest.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
 
         // Savings (with loading states - Bug 5 fix)
         builder.addCase(getBudgetSavings.pending, (state) => { state.isSavingsLoading = true })

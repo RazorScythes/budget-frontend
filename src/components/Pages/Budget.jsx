@@ -36,9 +36,10 @@ import {
     deleteBudgetExpense, bulkDeleteBudgetExpenses, bulkUpdateBudgetCategory, bulkUpdateBudgetCurrency,
     bulkUpdateBudgetDate, bulkUpdateBudgetPaymentMethod,
     getExchangeRates, saveExchangeRates, resetExchangeRates, saveBudgetSettings,
-    searchBudgetExpenses, importBudgetCSV, processRecurring,
+    searchBudgetExpenses, importBudgetCSV, processRecurring, processSavingsInterest,
     getDebts, createDebt, updateDebt, deleteDebt, addDebtPayment, removeDebtPayment, toggleDebtStatus,
     getBudgetLists, createBudgetList, updateBudgetList, deleteBudgetList,
+    getBudgetSavingsHistory,
     getFinancialGoals, createFinancialGoal, updateFinancialGoal, deleteFinancialGoal, addGoalContribution, removeGoalContribution,
     shareBudget, unshareBudget, updateBudgetShareAction, getSharedBudgets, getSharedUsers, setViewingBudgetOwner,
     acceptBudgetInvite,
@@ -310,6 +311,11 @@ const Budget = ({ user, theme }) => {
                         if (action?.payload?.data?.created > 0) {
                             dispatch(getBudgetExpenses({ month, year, ...currentOwnerParam }))
                             dispatch(getBudgetDashboard({ month, year, ...currentOwnerParam }))
+                        }
+                    })
+                    dispatch(processSavingsInterest()).then((action) => {
+                        if (action?.payload?.data?.accountsUpdated > 0) {
+                            dispatch(getBudgetSavingsHistory({}))
                         }
                     })
                 }

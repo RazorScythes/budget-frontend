@@ -32,3 +32,31 @@ export const countsFromDenominations = (denominations = {}) => {
     })
     return counts
 }
+
+const PERIODS_PER_YEAR = { daily: 365, weekly: 52, monthly: 12, yearly: 1 }
+
+export const calcInterestEstimate = (balance, interestRate, withholdingTax = 20, frequency = 'daily') => {
+    const principal = Math.max(0, parseFloat(balance) || 0)
+    const rate = Math.max(0, parseFloat(interestRate) || 0)
+    const tax = Math.min(100, Math.max(0, parseFloat(withholdingTax) || 0))
+    const periods = PERIODS_PER_YEAR[frequency] || PERIODS_PER_YEAR.daily
+    const gross = principal * (rate / 100) / periods
+    const taxAmt = gross * (tax / 100)
+    const net = gross - taxAmt
+    const round = (n) => Math.round(n * 100) / 100
+    return { gross: round(gross), tax: round(taxAmt), net: round(net) }
+}
+
+/** Net interest estimates per day, month, and year (after withholding tax). */
+export const calcInterestBreakdown = (balance, interestRate, withholdingTax = 20) => ({
+    daily: calcInterestEstimate(balance, interestRate, withholdingTax, 'daily'),
+    monthly: calcInterestEstimate(balance, interestRate, withholdingTax, 'monthly'),
+    yearly: calcInterestEstimate(balance, interestRate, withholdingTax, 'yearly'),
+})
+
+export const INTEREST_FREQUENCY_OPTIONS = [
+    { id: 'daily', label: 'Daily' },
+    { id: 'weekly', label: 'Weekly' },
+    { id: 'monthly', label: 'Monthly' },
+    { id: 'yearly', label: 'Yearly' },
+]
