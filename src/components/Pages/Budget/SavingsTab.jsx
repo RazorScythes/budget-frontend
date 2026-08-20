@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
     faPiggyBank, faCoins, faMoneyBillWave, faHistory, faPlus, faPen, faTrash,
     faCheck, faTimes, faSpinner, faBuildingColumns, faWallet, faArrowUp, faArrowDown,
-    faCalendarDay, faFilter, faPercent,
+    faCalendarDay, faFilter, faPercent, faEye, faEyeSlash, faExchangeAlt,
 } from '@fortawesome/free-solid-svg-icons'
-import { DENOMINATIONS } from './constants'
-import { AnimateIn, ModalOverlay } from './SharedComponents'
+import { DENOMINATIONS, SAVINGS_SUB_TABS, LS_SAVINGS_SUB_TAB } from './constants'
+import { AnimateIn, ModalOverlay, SubTabBar } from './SharedComponents'
 import {
     getBudgetSavingsHistory, deleteBudgetSavingsHistory,
     createBudgetSavingsAccount, updateBudgetSavingsAccount, deleteBudgetSavingsAccount,
-    processSavingsInterest,
+    processSavingsInterest, transferSavingsAccount,
 } from '../../../actions/budget'
 import {
     calcAccountTotal, calcAllSavingsTotal, countsFromDenominations, emptyDenominations,
@@ -26,6 +26,167 @@ const ACCRUAL_LABELS = {
     weekly: 'Weekly accrual',
     monthly: 'Monthly accrual',
     yearly: 'Yearly accrual',
+}
+
+const LS_SUMMARY_BALANCES = 'budget_savings_summary_balances_visible'
+const LS_ACCOUNT_BALANCES = 'budget_savings_account_balances_visible'
+
+const SAVINGS_SUB_TAB_META = [
+    { id: 'accounts', label: 'Accounts', icon: faPiggyBank },
+    { id: 'history', label: 'History', icon: faHistory },
+]
+
+const loadSummaryBalancesVisible = () => {
+    try {
+        const v = localStorage.getItem(LS_SUMMARY_BALANCES)
+        return v === null ? true : v === 'true'
+    } catch {
+        return true
+    }
+}
+
+const loadAccountBalancesVisible = () => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(LS_ACCOUNT_BALANCES) || '{}')
+        return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+        return {}
+    }
+}
+
+const extractCurrencySymbol = (formatCurrency) => {
+    const sample = formatCurrency(0)
+    const symbol = sample.replace(/[0-9.,\-\s]+/g, '').trim()
+    return symbol || '₱'
+}
+
+const BalanceAmount = ({ visible, children, maskedText = '₱ ----', className = '' }) => (
+    <span className={`relative inline-grid align-middle ${className}`}>
+        <span
+            aria-hidden={!visible}
+            className={`col-start-1 row-start-1 transition-all duration-300 ease-out ${
+                visible ? 'opacity-100 blur-0 translate-y-0 scale-100' : 'opacity-0 blur-[5px] -translate-y-0.5 scale-95 pointer-events-none select-none'
+            }`}
+        >
+            {children}
+        </span>
+        <span
+            aria-hidden={visible}
+            className={`col-start-1 row-start-1 tabular-nums transition-all duration-300 ease-out ${
+                visible ? 'opacity-0 blur-[5px] translate-y-0.5 scale-95 pointer-events-none select-none' : 'opacity-100 blur-0 translate-y-0 scale-100'
+            }`}
+        >
+            {maskedText}
+        </span>
+    </span>
+)
+
+const BankAccountDetailsPanel = ({ isLight, account, total, showBalances = true, formatCurrency, maskedBalance, maskedBalancePositive }) => {
+    const hasInterest = (account.interestRate > 0) && account.interestEnabled !== false
+    const taxPct = account.withholdingTax ?? 20
+    const frequency = account.interestFrequency || 'daily'
+    const freqLabel = INTEREST_FREQUENCY_OPTIONS.find(o => o.id === frequency)?.label || frequency
+    const accrualLabel = ACCRUAL_LABELS[frequency] || 'Auto accrual'
+
+    if (!hasInterest) {
+        return (
+            <div className={`rounded-xl border border-solid px-4 py-5 text-center ${isLight ? 'border-indigo-100 bg-indigo-50/40' : 'border-indigo-900/30 bg-indigo-950/10'}`}>
+                <div className={`w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-900/40 text-indigo-400'}`}>
+                    <FontAwesomeIcon icon={faBuildingColumns} className="text-sm" />
+                </div>
+                <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Balance-only account</p>
+                <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>No interest accrual configured</p>
+            </div>
+        )
+    }
+
+    const breakdown = calcInterestBreakdown(total, account.interestRate, taxPct)
+    const periodItems = [
+        { key: 'daily', label: 'Daily', data: breakdown.daily },
+        { key: 'monthly', label: 'Monthly', data: breakdown.monthly },
+        { key: 'yearly', label: 'Yearly', data: breakdown.yearly },
+    ]
+    const activePeriodKey = frequency === 'yearly' ? 'yearly' : frequency === 'monthly' ? 'monthly' : 'daily'
+    const activePeriod = periodItems.find(p => p.key === activePeriodKey) || periodItems[0]
+
+    return (
+        <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+                {[
+                    { label: 'Annual rate', value: `${account.interestRate}%`, icon: faPercent },
+                    { label: 'Withholding', value: `${taxPct}%`, icon: null },
+                    { label: 'Accrual', value: freqLabel, icon: null },
+                ].map(({ label, value, icon }) => (
+                    <div
+                        key={label}
+                        className={`rounded-lg border border-solid px-2 py-2.5 text-center ${isLight ? 'border-indigo-100 bg-white/70' : 'border-indigo-900/25 bg-[#111]/80'}`}
+                    >
+                        {icon && (
+                            <FontAwesomeIcon icon={icon} className={`text-[10px] mb-1 ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
+                        )}
+                        <p className={`text-[9px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
+                        <p className={`text-xs font-bold mt-0.5 ${isLight ? 'text-slate-800' : 'text-white'}`}>{value}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className={`rounded-xl border border-solid overflow-hidden ${isLight ? 'border-indigo-200 bg-gradient-to-br from-indigo-50 to-white' : 'border-indigo-800/40 bg-gradient-to-br from-indigo-950/30 to-[#111]'}`}>
+                <div className={`px-3 py-2 border-b border-solid flex items-center justify-between gap-2 ${isLight ? 'border-indigo-100' : 'border-indigo-900/30'}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>
+                        Active accrual
+                    </span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/50 text-indigo-300'}`}>
+                        {accrualLabel}
+                    </span>
+                </div>
+                <div className="px-3 py-3">
+                    <p className={`text-[10px] font-medium mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Net per {activePeriod.label.toLowerCase()} period
+                    </p>
+                    <p className={`text-xl font-bold tabular-nums ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
+                        <BalanceAmount visible={showBalances} maskedText={maskedBalancePositive}>+{formatCurrency(activePeriod.data.net)}</BalanceAmount>
+                    </p>
+                    <p className={`text-[10px] mt-1.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                        Gross <BalanceAmount visible={showBalances} maskedText={maskedBalance}>{formatCurrency(activePeriod.data.gross)}</BalanceAmount>
+                        <span className="mx-1">·</span>
+                        Tax <BalanceAmount visible={showBalances} maskedText={maskedBalance}>{formatCurrency(activePeriod.data.tax)}</BalanceAmount>
+                    </p>
+                </div>
+            </div>
+
+            <div>
+                <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                    All periods (net)
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                    {periodItems.map(({ key, label, data }) => {
+                        const isActive = key === activePeriodKey
+                        return (
+                            <div
+                                key={key}
+                                className={`rounded-lg px-2 py-2 text-center border border-solid ${
+                                    isActive
+                                        ? (isLight ? 'border-indigo-200 bg-indigo-50' : 'border-indigo-800/50 bg-indigo-950/25')
+                                        : (isLight ? 'border-slate-100 bg-slate-50/80' : 'border-[#252525] bg-[#111]/60')
+                                }`}
+                            >
+                                <p className={`text-[9px] font-semibold uppercase ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
+                                <p className={`text-[11px] font-bold tabular-nums mt-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
+                                    <BalanceAmount visible={showBalances} maskedText={maskedBalancePositive}>+{formatCurrency(data.net)}</BalanceAmount>
+                                </p>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {frequency === 'weekly' && (
+                <p className={`text-[10px] leading-relaxed px-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Weekly accrual is enabled — day, month, and year figures show equivalent rates.
+                </p>
+            )}
+        </div>
+    )
 }
 
 const InterestBreakdownPanel = ({ isLight, breakdown, withholdingTax, activeFrequency, compact = false }) => {
@@ -629,14 +790,66 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
     )
 }
 
-const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispatch, savingsAccounts, savingsHistory, isLoading, isViewer }) => {
+const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispatch, savingsAccounts, savingsHistory, isLoading, isViewer, globalShowBalances, templateStyles }) => {
     const accounts = Array.isArray(savingsAccounts) ? savingsAccounts : []
-    const [subTab, setSubTab] = useState('accounts')
+    const [subTab, setSubTab] = useState(() => {
+        try {
+            const saved = localStorage.getItem(LS_SAVINGS_SUB_TAB)
+            return SAVINGS_SUB_TABS.includes(saved) ? saved : 'accounts'
+        } catch {
+            return 'accounts'
+        }
+    })
     const [formAccount, setFormAccount] = useState(null)
     const [showForm, setShowForm] = useState(false)
     const [saving, setSaving] = useState(false)
     const [deleteModal, setDeleteModal] = useState(null)
     const [expandedId, setExpandedId] = useState(null)
+    const [showTransfer, setShowTransfer] = useState(false)
+    const [transferForm, setTransferForm] = useState({ fromAccountId: '', toAccountId: '', amount: '', note: '' })
+    const [showSummaryBalances, setShowSummaryBalances] = useState(loadSummaryBalancesVisible)
+    const [accountBalancesVisible, setAccountBalancesVisible] = useState(loadAccountBalancesVisible)
+
+    useEffect(() => {
+        try { localStorage.setItem(LS_SAVINGS_SUB_TAB, subTab) } catch { /* ignore */ }
+    }, [subTab])
+
+    useEffect(() => {
+        if (globalShowBalances !== undefined) setShowSummaryBalances(globalShowBalances)
+    }, [globalShowBalances])
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_SUMMARY_BALANCES, String(showSummaryBalances))
+        } catch { /* ignore */ }
+    }, [showSummaryBalances])
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_ACCOUNT_BALANCES, JSON.stringify(accountBalancesVisible))
+        } catch { /* ignore */ }
+    }, [accountBalancesVisible])
+
+    const currencySymbol = useMemo(() => extractCurrencySymbol(formatCurrency), [formatCurrency])
+    const maskedBalance = useMemo(() => `${currencySymbol} ----`, [currencySymbol])
+    const maskedBalancePositive = useMemo(() => `+${currencySymbol} ----`, [currencySymbol])
+
+    const isAccountBalanceVisible = useCallback((accountId) => {
+        if (globalShowBalances === false) return false
+        if (!accountId) return true
+        if (Object.prototype.hasOwnProperty.call(accountBalancesVisible, accountId)) {
+            return accountBalancesVisible[accountId]
+        }
+        return true
+    }, [accountBalancesVisible, globalShowBalances])
+
+    const toggleAccountBalance = useCallback((accountId) => {
+        if (!accountId) return
+        setAccountBalancesVisible(prev => {
+            const current = Object.prototype.hasOwnProperty.call(prev, accountId) ? prev[accountId] : true
+            return { ...prev, [accountId]: !current }
+        })
+    }, [])
 
     useEffect(() => {
         dispatch(getBudgetSavingsHistory({}))
@@ -714,6 +927,12 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
         dispatch(getBudgetSavingsHistory({}))
         setDeleteModal(null)
         if (expandedId === id) setExpandedId(null)
+        setAccountBalancesVisible(prev => {
+            if (!Object.prototype.hasOwnProperty.call(prev, id)) return prev
+            const next = { ...prev }
+            delete next[id]
+            return next
+        })
     }
 
     const confirmDeleteHistory = async (id) => {
@@ -729,7 +948,7 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
         if (subTab === 'accounts') {
             const parts = [
                 `${accounts.length} account${accounts.length !== 1 ? 's' : ''}`,
-                `${formatCurrency(grandTotal)} total`,
+                showSummaryBalances ? `${formatCurrency(grandTotal)} total` : 'totals hidden',
             ]
             if (summary.cashCount > 0) parts.push(`${summary.cashCount} cash`)
             if (summary.bankCount > 0) parts.push(`${summary.bankCount} bank`)
@@ -737,7 +956,7 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
         }
         if (historyCount === 0) return 'Balance changes will appear here when you update savings'
         return `${historyCount} recorded change${historyCount !== 1 ? 's' : ''} · filter by account, type, or increase/decrease`
-    }, [subTab, accounts.length, grandTotal, formatCurrency, summary.cashCount, summary.bankCount, historyCount])
+    }, [subTab, accounts.length, grandTotal, formatCurrency, summary.cashCount, summary.bankCount, historyCount, showSummaryBalances])
 
     if (isLoading && accounts.length === 0) {
         return (
@@ -755,64 +974,84 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
     return (
         <div className="space-y-4">
             <AnimateIn delay={0}>
-                <div className="space-y-2">
+                <div className="space-y-3">
+                    <SubTabBar
+                        tabs={SAVINGS_SUB_TAB_META}
+                        activeId={subTab}
+                        onChange={setSubTab}
+                        isLight={isLight}
+                        templateStyles={templateStyles}
+                        renderBadge={(tab, active) => tab.id === 'history' && historyCount > 0 ? (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                active
+                                    ? (isLight ? 'bg-slate-200/80 text-slate-700' : 'bg-white/15 text-gray-200')
+                                    : (isLight ? 'bg-slate-200 text-slate-600' : 'bg-white/10 text-gray-400')
+                            }`}>{historyCount}</span>
+                        ) : null}
+                    />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-1">
-                            {[
-                                { id: 'accounts', label: 'Accounts', icon: faPiggyBank },
-                                { id: 'history', label: 'History', icon: faHistory },
-                            ].map(t => (
+                        <p className={`text-[11px] leading-relaxed px-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {tabDetail}
+                        </p>
+                        {subTab === 'accounts' && (
+                            <div className="flex items-center gap-2 flex-shrink-0">
                                 <button
-                                    key={t.id}
                                     type="button"
-                                    onClick={() => setSubTab(t.id)}
-                                    className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                                        subTab === t.id
-                                            ? (isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/10 text-blue-400')
-                                            : (isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-white/5')
+                                    onClick={() => setShowSummaryBalances(v => !v)}
+                                    title={showSummaryBalances ? 'Hide total savings' : 'Show total savings'}
+                                    className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                        isLight
+                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            : 'bg-[#1f1f1f] text-gray-300 hover:bg-[#2a2a2a]'
                                     }`}
                                 >
-                                    <FontAwesomeIcon icon={t.icon} className="text-[10px]" />
-                                    {t.label}
-                                    {t.id === 'history' && historyCount > 0 && (
-                                        <span className={`ml-0.5 text-[10px] px-1.5 py-0.5 rounded-full ${
-                                            subTab === t.id ? (isLight ? 'bg-blue-100' : 'bg-blue-500/20') : (isLight ? 'bg-slate-200' : 'bg-white/10')
-                                        }`}>{historyCount}</span>
-                                    )}
+                                    <FontAwesomeIcon icon={showSummaryBalances ? faEye : faEyeSlash} className="text-[10px]" />
+                                    {showSummaryBalances ? 'Hide totals' : 'Show totals'}
                                 </button>
-                            ))}
-                        </div>
-                        {subTab === 'accounts' && !isViewer && (
-                            <button
-                                type="button"
-                                onClick={openCreate}
-                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                                    isLight ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'
-                                }`}
-                            >
-                                <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
-                                Add savings
-                            </button>
+                                {!isViewer && accounts.length >= 2 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTransfer(true)}
+                                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                            isLight ? 'bg-violet-50 text-violet-600 hover:bg-violet-100' : 'bg-violet-900/20 text-violet-400 hover:bg-violet-900/30'
+                                        }`}
+                                    >
+                                        <FontAwesomeIcon icon={faExchangeAlt} className="text-[10px]" />
+                                        Transfer
+                                    </button>
+                                )}
+                                {!isViewer && (
+                                    <button
+                                        type="button"
+                                        onClick={openCreate}
+                                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                                            isLight ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'
+                                        }`}
+                                    >
+                                        <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
+                                        Add savings
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
-                    <p className={`text-[11px] leading-relaxed px-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                        {tabDetail}
-                    </p>
                 </div>
             </AnimateIn>
 
             {subTab === 'accounts' && (
                 <>
                     <AnimateIn delay={100}>
-                        <div className={`${card} p-4 ${isLight ? 'bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/30' : 'bg-gradient-to-br from-blue-950/15 via-[#141414] to-indigo-950/10'}`}>
+                        <div className={`${card} p-4 transition-all duration-300 ${isLight ? 'bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/30' : 'bg-gradient-to-br from-blue-950/15 via-[#141414] to-indigo-950/10'} ${!showSummaryBalances ? (isLight ? 'opacity-95' : 'opacity-90') : ''}`}>
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                 <div className="flex items-center gap-4 min-w-0">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${isLight ? 'bg-blue-500 text-white shadow-lg shadow-blue-200/50' : 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'}`}>
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform duration-300 ${isLight ? 'bg-blue-500 text-white shadow-lg shadow-blue-200/50' : 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'} ${!showSummaryBalances ? 'scale-95' : 'scale-100'}`}>
                                         <FontAwesomeIcon icon={faPiggyBank} className="text-lg" />
                                     </div>
                                     <div className="min-w-0">
                                         <p className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Total savings</p>
-                                        <p className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>{formatCurrency(grandTotal)}</p>
+                                        <p className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
+                                            <BalanceAmount visible={showSummaryBalances} maskedText={maskedBalance}>{formatCurrency(grandTotal)}</BalanceAmount>
+                                        </p>
                                         <p className={`text-[11px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
                                             {accounts.length} account{accounts.length !== 1 ? 's' : ''}
                                             {summary.cashCount > 0 && summary.bankCount > 0 && (
@@ -833,12 +1072,14 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                 <span className={`text-[10px] font-semibold shrink-0 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>{summary.cashShare}%</span>
                                             )}
                                         </div>
-                                        <p className={`text-sm font-bold tabular-nums ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>{formatCurrency(summary.cashTotal)}</p>
+                                        <p className={`text-sm font-bold tabular-nums ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>
+                                            <BalanceAmount visible={showSummaryBalances} maskedText={maskedBalance}>{formatCurrency(summary.cashTotal)}</BalanceAmount>
+                                        </p>
                                         {summary.cashCount > 0 && (
                                             <div className={`mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                <span>Bills {formatCurrency(summary.billsTotal)}</span>
+                                                <span>Bills <BalanceAmount visible={showSummaryBalances} maskedText={maskedBalance}>{formatCurrency(summary.billsTotal)}</BalanceAmount></span>
                                                 <span>·</span>
-                                                <span>Coins {formatCurrency(summary.coinsTotal)}</span>
+                                                <span>Coins <BalanceAmount visible={showSummaryBalances} maskedText={maskedBalance}>{formatCurrency(summary.coinsTotal)}</BalanceAmount></span>
                                             </div>
                                         )}
                                     </div>
@@ -853,7 +1094,9 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                 <span className={`text-[10px] font-semibold shrink-0 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>{summary.bankShare}%</span>
                                             )}
                                         </div>
-                                        <p className={`text-sm font-bold tabular-nums ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>{formatCurrency(summary.bankTotal)}</p>
+                                        <p className={`text-sm font-bold tabular-nums ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>
+                                            <BalanceAmount visible={showSummaryBalances} maskedText={maskedBalance}>{formatCurrency(summary.bankTotal)}</BalanceAmount>
+                                        </p>
                                         <p className={`mt-1.5 text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
                                             {summary.bankCount > 0
                                                 ? `${summary.bankCount} account${summary.bankCount !== 1 ? 's' : ''} · total balance only`
@@ -871,9 +1114,10 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                 const total = calcAccountTotal(account)
                                 const isCash = account.category === 'cash'
                                 const isExpanded = expandedId === account._id
+                                const accountVisible = isAccountBalanceVisible(account._id)
                                 return (
-                                    <div key={account._id} className={`${card} overflow-hidden transition-all ${isExpanded ? (isLight ? 'ring-2 ring-blue-200' : 'ring-2 ring-blue-800/50') : ''}`}>
-                                        <div className="p-4">
+                                    <div key={account._id} className={`${card} overflow-hidden transition-all flex flex-col h-full ${isExpanded ? (isLight ? 'ring-2 ring-blue-200' : 'ring-2 ring-blue-800/50') : ''}`}>
+                                        <div className="p-4 flex flex-col flex-1 min-h-0">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex items-start gap-3 min-w-0">
                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isCash ? (isLight ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-900/30 text-emerald-400') : (isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-900/30 text-indigo-400')}`}>
@@ -889,16 +1133,24 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                         <span className={`inline-flex mt-1 text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${isCash ? (isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-900/30 text-emerald-400') : (isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/30 text-indigo-400')}`}>
                                                             {isCash ? 'Cash' : 'Bank'}
                                                         </span>
-                                                        {!isCash && (account.interestRate > 0) && account.interestEnabled !== false && (
-                                                            <span className={`inline-flex ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${isLight ? 'bg-amber-50 text-amber-700' : 'bg-amber-900/30 text-amber-400'}`}>
-                                                                {account.interestRate}% · {account.interestFrequency || 'daily'}
-                                                            </span>
-                                                        )}
-                                                        <p className={`text-lg font-bold mt-2 tabular-nums ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>{formatCurrency(total)}</p>
+                                                        <p className={`text-lg font-bold mt-2 tabular-nums ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>
+                                                            <BalanceAmount visible={accountVisible} maskedText={maskedBalance}>{formatCurrency(total)}</BalanceAmount>
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                {!isViewer && (
-                                                    <div className="flex items-center gap-0.5 shrink-0">
+                                                <div className="flex items-center gap-0.5 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleAccountBalance(account._id)}
+                                                        title={accountVisible ? 'Hide balance' : 'Show balance'}
+                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                                            isLight ? 'hover:bg-slate-100 text-slate-400 hover:text-slate-600' : 'hover:bg-white/5 text-gray-500 hover:text-gray-200'
+                                                        }`}
+                                                    >
+                                                        <FontAwesomeIcon icon={accountVisible ? faEye : faEyeSlash} className="text-[11px]" />
+                                                    </button>
+                                                    {!isViewer && (
+                                                        <>
                                                         <button type="button" onClick={() => openEdit(account)} title="Edit" className={`w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'hover:bg-blue-50 text-blue-500' : 'hover:bg-blue-900/30 text-blue-400'}`}>
                                                             <FontAwesomeIcon icon={faPen} className="text-[11px]" />
                                                         </button>
@@ -907,27 +1159,23 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                                 <FontAwesomeIcon icon={faTrash} className="text-[11px]" />
                                                             </button>
                                                         )}
-                                                    </div>
-                                                )}
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
 
-                                            {!isCash && (account.interestRate > 0) && account.interestEnabled !== false && (
-                                                <div className="mt-3">
-                                                    <InterestBreakdownPanel
+                                            {!isCash && isExpanded && (
+                                                <div className="mt-3 pt-3">
+                                                    <BankAccountDetailsPanel
                                                         isLight={isLight}
-                                                        breakdown={calcInterestBreakdown(total, account.interestRate, account.withholdingTax ?? 20)}
-                                                        withholdingTax={account.withholdingTax ?? 20}
-                                                        activeFrequency={account.interestFrequency || 'daily'}
-                                                        compact
+                                                        account={account}
+                                                        total={total}
+                                                        showBalances={accountVisible}
+                                                        formatCurrency={formatCurrency}
+                                                        maskedBalance={maskedBalance}
+                                                        maskedBalancePositive={maskedBalancePositive}
                                                     />
                                                 </div>
-                                            )}
-
-                                            {isCash && (
-                                                <button type="button" onClick={() => setExpandedId(isExpanded ? null : account._id)}
-                                                    className={`mt-3 text-[11px] font-medium ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>
-                                                    {isExpanded ? 'Hide breakdown' : 'View breakdown'}
-                                                </button>
                                             )}
 
                                             {isCash && isExpanded && (() => {
@@ -947,7 +1195,9 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                         <div className="mb-3 last:mb-0">
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <p className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
-                                                                <p className={`text-[11px] font-bold tabular-nums ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{formatCurrency(subtotal)}</p>
+                                                                <p className={`text-[11px] font-bold tabular-nums ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
+                                                                    <BalanceAmount visible={accountVisible} maskedText={maskedBalance}>{formatCurrency(subtotal)}</BalanceAmount>
+                                                                </p>
                                                             </div>
                                                             <div className="space-y-1">
                                                                 {active.map(d => {
@@ -964,7 +1214,9 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                                             </div>
                                                                             <div className="flex items-center gap-3 shrink-0 text-right">
                                                                                 <span className={`text-[11px] tabular-nums ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>× {qty}</span>
-                                                                                <span className={`text-xs font-bold tabular-nums w-20 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>{formatCurrency(amt)}</span>
+                                                                                <span className={`text-xs font-bold tabular-nums w-20 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>
+                                                                                    <BalanceAmount visible={accountVisible} maskedText={maskedBalance}>{formatCurrency(amt)}</BalanceAmount>
+                                                                                </span>
                                                                             </div>
                                                                         </div>
                                                                     )
@@ -975,14 +1227,16 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                 }
 
                                                 return (
-                                                    <div className={`mt-3 pt-3 border-t border-solid ${isLight ? 'border-slate-100' : 'border-[#222]'}`}>
+                                                    <div className="mt-3 pt-3">
                                                         {hasAny ? (
                                                             <>
                                                                 {renderRows(bills, 'Bills', totalBills)}
                                                                 {renderRows(coins, 'Coins', totalCoins)}
                                                                 <div className={`flex items-center justify-between gap-2 mt-3 pt-3 border-t border-solid px-2.5 ${isLight ? 'border-slate-200' : 'border-[#2a2a2a]'}`}>
                                                                     <span className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>Total</span>
-                                                                    <span className={`text-sm font-bold tabular-nums ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>{formatCurrency(total)}</span>
+                                                                    <span className={`text-sm font-bold tabular-nums ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>
+                                                                        <BalanceAmount visible={accountVisible} maskedText={maskedBalance}>{formatCurrency(total)}</BalanceAmount>
+                                                                    </span>
                                                                 </div>
                                                             </>
                                                         ) : (
@@ -991,6 +1245,30 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                                     </div>
                                                 )
                                             })()}
+
+                                            {isCash && (
+                                                <div className={`mt-auto pt-3 border-t border-solid ${isLight ? 'border-slate-100' : 'border-[#222]'}`}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setExpandedId(isExpanded ? null : account._id)}
+                                                        className={`w-full text-center text-[11px] font-medium py-1 ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                                                    >
+                                                        {isExpanded ? 'Hide breakdown' : 'View breakdown'}
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {!isCash && (
+                                                <div className={`mt-auto pt-3 border-t border-solid ${isLight ? 'border-slate-100' : 'border-[#222]'}`}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setExpandedId(isExpanded ? null : account._id)}
+                                                        className={`w-full text-center text-[11px] font-medium py-1 ${isLight ? 'text-indigo-600 hover:text-indigo-700' : 'text-indigo-400 hover:text-indigo-300'}`}
+                                                    >
+                                                        {isExpanded ? 'Hide details' : 'View details'}
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )
@@ -1042,6 +1320,59 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                     onCancel={() => setDeleteModal(null)}
                     onConfirm={() => deleteModal.type === 'account' ? confirmDeleteAccount(deleteModal.id) : confirmDeleteHistory(deleteModal.id)}
                 />
+            )}
+
+            {showTransfer && (
+                <ModalOverlay onClose={() => setShowTransfer(false)}>
+                    <div className={`w-full max-w-md rounded-2xl p-5 ${isLight ? 'bg-white' : 'bg-[#141414] border border-[#2B2B2B]'}`}>
+                        <h3 className={`text-sm font-semibold mb-4 ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Transfer between accounts</h3>
+                        <div className="space-y-3">
+                            <div>
+                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>From</label>
+                                <select className={`${inputCls} w-full`} value={transferForm.fromAccountId} onChange={e => setTransferForm(f => ({ ...f, fromAccountId: e.target.value }))}>
+                                    <option value="">Select account</option>
+                                    {accounts.map(a => <option key={a._id} value={a._id}>{a.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>To</label>
+                                <select className={`${inputCls} w-full`} value={transferForm.toAccountId} onChange={e => setTransferForm(f => ({ ...f, toAccountId: e.target.value }))}>
+                                    <option value="">Select account</option>
+                                    {accounts.filter(a => a._id !== transferForm.fromAccountId).map(a => <option key={a._id} value={a._id}>{a.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Amount</label>
+                                <input type="number" min="0" step="0.01" className={inputCls} value={transferForm.amount} onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))} />
+                            </div>
+                            <div>
+                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Note (optional)</label>
+                                <input type="text" className={inputCls} value={transferForm.note} onChange={e => setTransferForm(f => ({ ...f, note: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button type="button" onClick={() => setShowTransfer(false)} className={`px-4 py-2 rounded-lg text-sm ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-[#1f1f1f] text-gray-300'}`}>Cancel</button>
+                            <button
+                                type="button"
+                                disabled={!transferForm.fromAccountId || !transferForm.toAccountId || !transferForm.amount}
+                                onClick={async () => {
+                                    await dispatch(transferSavingsAccount({
+                                        fromAccountId: transferForm.fromAccountId,
+                                        toAccountId: transferForm.toAccountId,
+                                        amount: parseFloat(transferForm.amount),
+                                        note: transferForm.note,
+                                    })).unwrap()
+                                    dispatch(getBudgetSavingsHistory({}))
+                                    setShowTransfer(false)
+                                    setTransferForm({ fromAccountId: '', toAccountId: '', amount: '', note: '' })
+                                }}
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${isLight ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-600 hover:bg-violet-500'} disabled:opacity-40`}
+                            >
+                                Transfer
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
             )}
         </div>
     )

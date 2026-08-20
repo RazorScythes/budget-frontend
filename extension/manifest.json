@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Budget Manager",
+  "version": "1.2.0",
+  "description": "Log daily expenses to your Budget Manager account.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*"],
+  "action": {
+    "default_title": "Log expense",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html"
+}

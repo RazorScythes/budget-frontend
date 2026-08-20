@@ -346,6 +346,16 @@ export const deleteBudgetSavingsAccount = createAsyncThunk('budget/deleteSavings
     }
 })
 
+export const transferSavingsAccount = createAsyncThunk('budget/transferSavings', async (data, thunkAPI) => {
+    try {
+        const response = await api.transferSavingsAccount(data)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Transfer failed' } })
+    }
+})
+
 export const saveBudgetSavings = createAsyncThunk('budget/saveSavings', async (data, thunkAPI) => {
     try {
         const response = await api.saveSavings(data)
@@ -538,9 +548,9 @@ export const deleteFinancialGoal = createAsyncThunk('budget/deleteGoal', async (
     }
 })
 
-export const addGoalContribution = createAsyncThunk('budget/addGoalContribution', async ({ id, amount, notes, budgetOwnerId }, thunkAPI) => {
+export const addGoalContribution = createAsyncThunk('budget/addGoalContribution', async ({ id, amount, notes, savingsAccountId, budgetOwnerId }, thunkAPI) => {
     try {
-        const response = await api.addGoalContribution(id, { amount, notes, budgetOwnerId })
+        const response = await api.addGoalContribution(id, { amount, notes, savingsAccountId, budgetOwnerId })
         return response
     } catch (err) {
         if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
@@ -863,6 +873,13 @@ export const budgetSlice = createSlice({
             state.alert = action.payload.data.alert
         })
         builder.addCase(updateBudgetSavingsAccount.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+
+        builder.addCase(transferSavingsAccount.fulfilled, (state, action) => {
+            state.savingsAccounts = action.payload.data.result || []
+            state.savings = state.savingsAccounts
+            state.alert = action.payload.data.alert
+        })
+        builder.addCase(transferSavingsAccount.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
 
         builder.addCase(deleteBudgetSavingsAccount.fulfilled, (state, action) => {
             state.savingsAccounts = action.payload.data.result || []

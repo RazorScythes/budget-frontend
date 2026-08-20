@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budget Extension — Settings</title>
+  <link rel="stylesheet" href="shared/theme.css" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body class="options-page">
+  <div class="page">
+    <header class="page-header">
+      <div class="brand-mark brand-mark-lg" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
+          <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Extension settings</h1>
+        <p class="page-lead">Connect the extension to your Budget Manager account using a personal client key.</p>
+      </div>
+    </header>
+
+    <form id="options-form" class="settings-card card">
+      <h2 class="section-title">Connection</h2>
+
+      <div class="field">
+        <label class="field-label" for="apiBaseUrl">API base URL</label>
+        <input class="field-input" type="url" id="apiBaseUrl" placeholder="https://your-api.example.com" required />
+        <span class="field-hint">Use the same backend URL as the web app. Do not add a trailing slash.</span>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="clientKey">Client key</label>
+        <input class="field-input client-key-input" type="password" id="clientKey" placeholder="bext_xxxxxxxx.xxxxxxxxxxxxxxxx" autocomplete="off" />
+        <span class="field-hint">
+          Generate this in <strong>Budget → Settings → Tools</strong>. Required for production. On localhost you can leave it empty when the backend has <code>DEVELOPMENT=true</code>.
+        </span>
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="showClientKey" />
+        <span>Show client key while editing</span>
+      </label>
+
+      <p id="status" class="alert alert-success hidden" role="status"></p>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-lg">Save settings</button>
+      </div>
+    </form>
+
+    <div class="help-grid">
+      <section class="help-card card">
+        <div class="help-icon help-icon-dev" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        </div>
+        <h2>How it works</h2>
+        <ul>
+          <li>Each user gets a unique <code>bext_…</code> client key</li>
+          <li>The key signs requests — server secrets stay on the backend</li>
+          <li>You can revoke or regenerate the key anytime</li>
+        </ul>
+      </section>
+
+      <section class="help-card card">
+        <div class="help-icon help-icon-prod" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h2>Security</h2>
+        <ul>
+          <li>Client keys belong to your account only</li>
+          <li>Login fails if the key does not match your username</li>
+          <li>Never share your client key or commit it to git</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

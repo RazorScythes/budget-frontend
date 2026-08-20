@@ -3,6 +3,14 @@ export const CATEGORY_COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 export const VALID_TABS = ['dashboard', 'daily', 'monthly', 'categories', 'savings', 'debts', 'lists', 'goals', 'summary', 'settings']
 
+export const CHROME_EXTENSION_DOWNLOAD = '/budget-extension.zip'
+
+export const SETTINGS_SUB_TABS = ['appearance', 'budget', 'currency', 'data', 'tools', 'help']
+export const LS_SETTINGS_SUB_TAB = 'budget_settings_subtab'
+
+export const SAVINGS_SUB_TABS = ['accounts', 'history']
+export const LS_SAVINGS_SUB_TAB = 'budget_savings_subtab'
+
 export const CURRENCIES = [
     { code: 'PHP', symbol: '₱', name: 'Philippine Peso' },
     { code: 'USD', symbol: '$', name: 'US Dollar' },
