@@ -26,7 +26,7 @@ library.add(
 // Defer loading the full icon set (only needed for icon picker in categories)
 import('@fortawesome/free-solid-svg-icons').then(m => library.add(m.fas))
 const loadVercelBlob = () => import('@vercel/blob').then(m => m.put)
-import { deleteReceipt as deleteReceiptApi } from '../../endpoint'
+import { deleteReceipt as deleteReceiptApi, getBudgetExpenses as fetchBudgetExpensesApi } from '../../endpoint'
 const loadSocketIO = () => import('socket.io-client').then(m => m.io)
 import { 
     getBudgetInitialLoad,
@@ -256,21 +256,31 @@ const Budget = ({ user, theme }) => {
     // YTD expenses (fetched separately so monthly expenses stay in Redux)
     const [ytdExpenses, setYtdExpenses] = useState([])
     const [ytdLoading, setYtdLoading] = useState(false)
+    const ytdRequestRef = useRef(0)
 
-    const fetchYtdExpenses = async (y, ownerOverride) => {
+    const fetchYtdExpenses = useCallback(async (y, ownerOverride) => {
+        const requestId = ++ytdRequestRef.current
         setYtdLoading(true)
         try {
             const params = { year: y, ...(ownerOverride || ownerParam) }
-            const res = await import('../../endpoint').then(m => m.getBudgetExpenses(params))
-            setYtdExpenses(res.data.result || [])
+            const res = await fetchBudgetExpensesApi(params)
+            if (requestId !== ytdRequestRef.current) return
+            setYtdExpenses(Array.isArray(res.data?.result) ? res.data.result : [])
         } catch (err) {
+            if (requestId !== ytdRequestRef.current) return
             console.error('Failed to fetch YTD expenses:', err)
             setYtdExpenses([])
-            setNotification({ message: 'Failed to load year-to-date data.', variant: 'danger' })
+            setNotification({
+                message: err.response?.data?.alert?.message || 'Failed to load year-to-date data.',
+                variant: 'danger',
+            })
             setShowNotif(true)
+        } finally {
+            if (requestId === ytdRequestRef.current) {
+                setYtdLoading(false)
+            }
         }
-        setYtdLoading(false)
-    }
+    }, [ownerParam])
 
     const initialLoadRef = useRef(false)
 
@@ -306,8 +316,11 @@ const Budget = ({ user, theme }) => {
             }, 200)
         }
 
-        return () => clearTimeout(deferTimer)
-    }, [user, month, year, budgetOwnerId])
+        return () => {
+            ytdRequestRef.current += 1
+            clearTimeout(deferTimer)
+        }
+    }, [user, month, year, budgetOwnerId, fetchYtdExpenses])
 
     // ==================== SOCKET.IO REAL-TIME ====================
 
@@ -436,7 +449,7 @@ const Budget = ({ user, theme }) => {
         dispatch(getBudgetDashboard({ month, year, ...ownerParam }))
         dispatch(getBudgetExpenses({ month, year, ...ownerParam }))
         dispatch(getBudgetCategories(ownerParam))
-        fetchYtdExpenses(year)
+        fetchYtdExpenses(year, ownerParam)
     }
 
     // ==================== HANDLERS ====================
