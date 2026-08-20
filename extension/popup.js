@@ -1,4 +1,5 @@
 import {
+  ensureConfig,
   getSession,
   clearSession,
   login,
@@ -129,6 +130,7 @@ async function initMain(token, profile) {
 async function boot() {
   showView('loading')
   try {
+    await ensureConfig()
     const { token, profile } = await getSession()
     if (token && profile) {
       await initMain(token, profile)

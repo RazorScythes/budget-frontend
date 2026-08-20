@@ -27,14 +27,29 @@ function loadEnvFile(path) {
     return env
 }
 
-function resolveApiBaseUrl(env) {
-    if (env.VITE_DEVELOPMENT === 'true') {
+function isProductionBuild() {
+    return process.argv.includes('--production')
+}
+
+/** Mirrors src/endpoint/index.js — dev uses localhost, prod uses VITE_APP_BASE_URL. */
+function resolveApiConfig(env) {
+    const production = isProductionBuild()
+    const development = !production && env.VITE_DEVELOPMENT === 'true'
+
+    if (development) {
         const protocol = env.VITE_APP_PROTOCOL || 'http'
         const host = env.VITE_APP_LOCALHOST || 'localhost'
-        const port = env.VITE_APP_SERVER_PORT || '5001'
-        return `${protocol}://${host}:${port}`
+        const port = env.VITE_APP_SERVER_PORT || '3000'
+        return {
+            apiBaseUrl: `${protocol}://${host}:${port}`.replace(/\/$/, ''),
+            environment: 'development',
+        }
     }
-    return env.VITE_APP_BASE_URL || 'http://localhost:5001'
+
+    return {
+        apiBaseUrl: (env.VITE_APP_BASE_URL || 'http://localhost:3000').replace(/\/$/, ''),
+        environment: 'production',
+    }
 }
 
 if (!existsSync(extDir)) {
@@ -43,13 +58,15 @@ if (!existsSync(extDir)) {
 }
 
 const env = loadEnvFile(envPath)
+const { apiBaseUrl, environment } = resolveApiConfig(env)
 const defaults = {
-    apiBaseUrl: resolveApiBaseUrl(env).replace(/\/$/, ''),
+    apiBaseUrl,
     appId: 'budget-extension',
+    environment,
 }
 
 writeFileSync(join(extDir, 'config.defaults.json'), JSON.stringify(defaults, null, 2))
-console.log('Wrote extension/config.defaults.json')
+console.log(`Wrote extension/config.defaults.json (${environment}: ${apiBaseUrl})`)
 
 mkdirSync(publicDir, { recursive: true })
 if (existsSync(outZip)) {

@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "npm run zip:extension && vite build",
+    "dev": "node scripts/zip-extension.mjs && vite",
+    "build": "node scripts/zip-extension.mjs --production && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "zip:extension": "node scripts/zip-extension.mjs"

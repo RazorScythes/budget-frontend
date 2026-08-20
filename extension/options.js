@@ -1,27 +1,43 @@
+import { loadDefaults, isLocalApiUrl } from './lib/defaults.js'
+import { ensureConfig } from './lib/api.js'
+
 const $ = (id) => document.getElementById(id)
 
 async function load() {
-  let defaults = {}
-  try {
-    const res = await fetch(chrome.runtime.getURL('config.defaults.json'))
-    if (res.ok) defaults = await res.json()
-  } catch { /* optional */ }
+  await ensureConfig()
+  const defaults = await loadDefaults()
 
   const data = await chrome.storage.sync.get(['apiBaseUrl', 'clientKey', 'appId'])
-  $('apiBaseUrl').value = data.apiBaseUrl || defaults.apiBaseUrl || 'http://localhost:5001'
+  const apiUrl = data.apiBaseUrl || defaults.apiBaseUrl || 'http://localhost:3000'
+  $('apiBaseUrl').value = apiUrl
   $('clientKey').value = data.clientKey || ''
+
+  const envEl = $('env-badge')
+  if (envEl) {
+    const env = defaults.environment || 'development'
+    envEl.textContent = env === 'production' ? 'Production build' : 'Development build'
+    envEl.dataset.env = env
+  }
 }
 
 $('showClientKey').addEventListener('change', (e) => {
   $('clientKey').type = e.target.checked ? 'text' : 'password'
 })
 
+$('reset-api-url')?.addEventListener('click', async () => {
+  const defaults = await loadDefaults()
+  if (defaults.apiBaseUrl) {
+    $('apiBaseUrl').value = defaults.apiBaseUrl
+  }
+})
+
 $('options-form').addEventListener('submit', async (e) => {
   e.preventDefault()
   const status = $('status')
   const clientKey = $('clientKey').value.trim()
+  const apiBaseUrl = $('apiBaseUrl').value.trim().replace(/\/$/, '')
 
-  if (!clientKey.includes('.') || !clientKey.startsWith('bext_')) {
+  if (!isLocalApiUrl(apiBaseUrl) && (!clientKey.includes('.') || !clientKey.startsWith('bext_'))) {
     status.className = 'alert alert-error'
     status.classList.remove('hidden')
     status.textContent = 'Invalid client key — paste the full key from Settings → Tools (starts with bext_)'
@@ -33,10 +49,12 @@ $('options-form').addEventListener('submit', async (e) => {
   status.textContent = 'Saving…'
 
   try {
+    const defaults = await loadDefaults()
     await chrome.storage.sync.set({
-      apiBaseUrl: $('apiBaseUrl').value.trim().replace(/\/$/, ''),
+      apiBaseUrl,
       clientKey,
       appId: 'budget-extension',
+      configEnvironment: defaults.environment || 'development',
     })
     status.className = 'alert alert-success'
     status.textContent = 'Settings saved. You can sign in from the extension popup.'

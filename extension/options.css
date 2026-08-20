@@ -220,3 +220,38 @@ body.options-page {
   border: 1px solid rgba(239, 68, 68, 0.25);
   color: #fca5a5;
 }
+
+.options-page .env-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.options-page .env-badge[data-env="production"] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.options-page .field-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.options-page .field-row .field-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.options-page .btn-sm {
+  padding: 0 14px;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}

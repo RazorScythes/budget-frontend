@@ -29,12 +29,34 @@ export function parseClientKey(clientKey) {
   return { clientId, clientSecret, clientKey: trimmed }
 }
 
+import { loadDefaults } from './defaults.js'
+
+export async function ensureConfig() {
+  const defaults = await loadDefaults()
+  const data = await chrome.storage.sync.get(['apiBaseUrl', 'configEnvironment', 'appId'])
+  const env = defaults.environment || 'development'
+  const shouldApply =
+    !data.apiBaseUrl ||
+    (defaults.apiBaseUrl && data.configEnvironment !== env)
+
+  if (shouldApply && defaults.apiBaseUrl) {
+    await chrome.storage.sync.set({
+      apiBaseUrl: defaults.apiBaseUrl.replace(/\/$/, ''),
+      configEnvironment: env,
+      appId: defaults.appId || 'budget-extension',
+    })
+  }
+}
+
 export async function getConfig() {
+  await ensureConfig()
+  const defaults = await loadDefaults()
   const data = await chrome.storage.sync.get(['apiBaseUrl', 'clientKey', 'appId'])
+  const fallback = (defaults.apiBaseUrl || 'http://localhost:3000').replace(/\/$/, '')
   return {
-    apiBaseUrl: (data.apiBaseUrl || 'http://localhost:5001').replace(/\/$/, ''),
+    apiBaseUrl: (data.apiBaseUrl || fallback).replace(/\/$/, ''),
     clientKey: (data.clientKey || '').trim(),
-    appId: data.appId || 'budget-extension',
+    appId: data.appId || defaults.appId || 'budget-extension',
   }
 }
 

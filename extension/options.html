@@ -19,6 +19,7 @@
       <div>
         <h1>Extension settings</h1>
         <p class="page-lead">Connect the extension to your Budget Manager account using a personal client key.</p>
+        <p class="env-badge" id="env-badge" aria-live="polite"></p>
       </div>
     </header>
 
@@ -27,8 +28,11 @@
 
       <div class="field">
         <label class="field-label" for="apiBaseUrl">API base URL</label>
-        <input class="field-input" type="url" id="apiBaseUrl" placeholder="https://your-api.example.com" required />
-        <span class="field-hint">Use the same backend URL as the web app. Do not add a trailing slash.</span>
+        <div class="field-row">
+          <input class="field-input" type="url" id="apiBaseUrl" placeholder="https://your-api.example.com" required />
+          <button type="button" class="btn btn-secondary btn-sm" id="reset-api-url">Use default</button>
+        </div>
+        <span class="field-hint">Set automatically from your build (localhost in dev, production URL in release). You can override if needed.</span>
       </div>
 
       <div class="field">
