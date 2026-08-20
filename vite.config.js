@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       react(),
       isProd && obfuscator({
         include: [/src\/.*\.[jt]sx?$/],
-        exclude: [/node_modules/],
+        exclude: [/node_modules/, /src\/security\//],
         options: {
           compact: true,
           controlFlowFlattening: true,
