@@ -34,7 +34,9 @@ export const attachApiShield = (axiosInstance) => {
         if (strict && signatureSecret && !['get', 'head', 'options'].includes((config.method || 'get').toLowerCase())) {
             const timestamp = String(Date.now())
             const path = new URL(config.url, config.baseURL).pathname
-            const bodyRaw = config.data
+            const hasBody = config.data !== undefined && config.data !== null
+                && !(typeof config.data === 'object' && Object.keys(config.data).length === 0)
+            const bodyRaw = hasBody
                 ? (typeof config.data === 'string' ? config.data : JSON.stringify(config.data))
                 : ''
             const bodyHash = await sha256Hex(bodyRaw)

@@ -17,29 +17,38 @@ import {
     faFileExport,
     faGear,
     faSpinner,
+    faBolt,
+    faChartPie,
+    faCalendarDay,
+    faTags,
+    faPiggyBank,
+    faHandHoldingUsd,
+    faListAlt,
+    faCheckCircle,
+    faFilePdf,
+    faCogs,
 } from '@fortawesome/free-solid-svg-icons'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { logout } from '../../actions/auth'
 import { searchBudgetExpenses, clearSearchResults } from '../../actions/budget'
 import { useDispatch, useSelector } from 'react-redux'
-import { Menu, X } from 'lucide-react'
 import { main, dark, light } from '../../style'
 import { MONTHS, CURRENCIES, VALID_TABS } from '../Pages/Budget/constants'
 import { buildExchangeRates, computeMonthlyStats, getActiveViewCurrency } from '../../utils/budgetCurrency'
 import Avatar from '../../assets/avatar.webp'
 
-const TAB_LABELS = {
-    dashboard: 'Dashboard',
-    daily: 'Daily Expenses',
-    monthly: 'Monthly Budget',
-    categories: 'Categories',
-    savings: 'Savings',
-    debts: 'Debts',
-    lists: 'Lists',
-    goals: 'Goals',
-    summary: 'Summary',
-    settings: 'Settings',
+const TAB_META = {
+    dashboard: { label: 'Dashboard', icon: faChartPie, hint: 'Overview & insights' },
+    daily: { label: 'Daily Expenses', icon: faCalendarDay, hint: 'Log & track spending' },
+    monthly: { label: 'Monthly Budget', icon: faCalendarAlt, hint: 'Plan your month' },
+    categories: { label: 'Categories', icon: faTags, hint: 'Review spending' },
+    savings: { label: 'Savings', icon: faPiggyBank, hint: 'Grow your savings' },
+    debts: { label: 'Debts', icon: faHandHoldingUsd, hint: 'Manage payments' },
+    lists: { label: 'Lists', icon: faListAlt, hint: 'Shopping & wishlists' },
+    goals: { label: 'Goals', icon: faCheckCircle, hint: 'Track your goals' },
+    summary: { label: 'Summary', icon: faFilePdf, hint: 'Reports & export' },
+    settings: { label: 'Settings', icon: faCogs, hint: 'Preferences & layout' },
 }
 
 const formatMoney = (value, currencyCode = 'PHP') => {
@@ -167,7 +176,6 @@ const Navbar = ({ theme, setTheme, setUser }) => {
 
     const profileRef = useRef(null)
     const quickRef = useRef(null)
-    const mobileRef = useRef(null)
     const searchRef = useRef(null)
     const searchTimeoutRef = useRef(null)
     const searchIdRef = useRef(0)
@@ -190,7 +198,6 @@ const Navbar = ({ theme, setTheme, setUser }) => {
     const [avatar, setAvatar] = useState(null)
     const [menuOpen, setMenuOpen] = useState(false)
     const [quickOpen, setQuickOpen] = useState(false)
-    const [mobileOpen, setMobileOpen] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
     const [searchKey, setSearchKey] = useState('')
     const [isSearching, setIsSearching] = useState(false)
@@ -198,13 +205,20 @@ const Navbar = ({ theme, setTheme, setUser }) => {
     const isLight = theme === 'light'
     const tabParam = searchParams.get('tab')
     const activeTab = VALID_TABS.includes(tabParam) ? tabParam : 'dashboard'
-    const activeLabel = TAB_LABELS[activeTab] || 'Dashboard'
+    const activeMeta = TAB_META[activeTab] || TAB_META.dashboard
+    const activeLabel = activeMeta.label
+    const activeIcon = activeMeta.icon
+    const activeHint = activeMeta.hint
     const now = new Date()
     const monthLabel = `${MONTHS[(selectedMonth || now.getMonth() + 1) - 1]} ${selectedYear || now.getFullYear()}`
 
     const savingsRate = stats.income > 0
         ? Math.round(((stats.income - stats.expenses) / stats.income) * 100)
         : 0
+
+    const contextHint = stats.income > 0
+        ? `${savingsRate}% saved this month`
+        : activeHint
 
     useEffect(() => {
         const profile = JSON.parse(localStorage.getItem('profile'))
@@ -214,7 +228,6 @@ const Navbar = ({ theme, setTheme, setUser }) => {
     }, [])
 
     useEffect(() => {
-        setMobileOpen(false)
         setQuickOpen(false)
     }, [location.pathname, location.search])
 
@@ -222,16 +235,14 @@ const Navbar = ({ theme, setTheme, setUser }) => {
         const handleClickOutside = (e) => {
             if (profileRef.current && !profileRef.current.contains(e.target)) setMenuOpen(false)
             if (quickRef.current && !quickRef.current.contains(e.target)) setQuickOpen(false)
-            if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false)
-            if (mobileRef.current && !mobileRef.current.contains(e.target) && !e.target.closest('[data-mobile-toggle]')) {
-                setMobileOpen(false)
+            if (searchOpen && searchRef.current && !searchRef.current.contains(e.target) && !e.target.closest('[data-search-toggle]')) {
+                setSearchOpen(false)
             }
         }
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
                 setMenuOpen(false)
                 setQuickOpen(false)
-                setMobileOpen(false)
                 setSearchOpen(false)
             }
         }
@@ -241,7 +252,7 @@ const Navbar = ({ theme, setTheme, setUser }) => {
             document.removeEventListener('mousedown', handleClickOutside)
             document.removeEventListener('keydown', handleEscape)
         }
-    }, [])
+    }, [searchOpen])
 
     const changeTheme = () => {
         const next = isLight ? 'dark' : 'light'
@@ -260,7 +271,6 @@ const Navbar = ({ theme, setTheme, setUser }) => {
     const jumpTo = (tab, extra = {}) => {
         const params = new URLSearchParams({ tab, ...extra })
         navigate(`/budget?${params.toString()}`)
-        setMobileOpen(false)
         setMenuOpen(false)
         setQuickOpen(false)
     }
@@ -342,52 +352,60 @@ const Navbar = ({ theme, setTheme, setUser }) => {
             <div className="max-w-[1550px] mx-auto px-3 sm:px-6 lg:px-8">
                 {/* Main bar */}
                 <div className="flex items-center justify-between gap-2 sm:gap-4 min-h-[56px] sm:min-h-[64px] py-2 sm:py-0">
-                    {/* Left: brand + breadcrumb context (not nav) */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                        <button
-                            type="button"
-                            data-mobile-toggle
-                            onClick={() => setMobileOpen(true)}
-                            className={`md:hidden w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#161616]'}`}
-                            aria-label="Open menu"
+                    {/* Left: brand + page context */}
+                    <div className="flex items-stretch min-w-0 flex-1">
+                        <Link
+                            to="/budget"
+                            className={`flex items-center gap-2.5 pr-3 sm:pr-4 shrink-0 group border-r border-solid ${isLight ? 'border-slate-200/80' : 'border-[#252525]'}`}
                         >
-                            <Menu size={20} />
-                        </button>
-
-                        <Link to="/budget" className="flex items-center gap-2 shrink-0 group min-w-0">
-                            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-[1.03] shrink-0 ${isLight ? 'bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-md shadow-blue-200/40' : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/25'}`}>
-                                <FontAwesomeIcon icon={faWallet} className="text-sm sm:text-base" />
+                            <div className={`w-9 h-9 sm:w-[38px] sm:h-[38px] rounded-xl flex items-center justify-center transition-all duration-200 group-hover:brightness-110 ${isLight ? 'bg-gradient-to-br from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-200/50' : 'bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-lg shadow-blue-950/50'}`}>
+                                <FontAwesomeIcon icon={faWallet} className="text-sm" />
                             </div>
-                            <div className="min-w-0 hidden sm:block">
-                                <p className={`font-bold text-sm leading-none truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>Budget</p>
-                                <p className={`text-[10px] mt-0.5 truncate hidden sm:block ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Finance tracker</p>
+                            <div className="min-w-0 hidden md:block">
+                                <p className={`font-bold text-sm leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>Budget</p>
+                                <p className={`text-[10px] mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Finance tracker</p>
                             </div>
                         </Link>
 
-                        {/* Mobile: active tab chip */}
-                        <div className={`sm:hidden min-w-0 flex-1 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>
-                            <p className="text-[11px] font-semibold truncate leading-tight">{activeLabel}</p>
-                            <p className={`text-[10px] truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{monthLabel}</p>
+                        {/* Mobile context */}
+                        <div className="sm:hidden flex items-center gap-2.5 pl-3 min-w-0 flex-1">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/12 text-blue-400'}`}>
+                                <FontAwesomeIcon icon={activeIcon} className="text-xs" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className={`text-[13px] font-semibold truncate leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>{activeLabel}</p>
+                                <p className={`text-[10px] truncate mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                    {monthLabel} · {currencyLabel}
+                                </p>
+                            </div>
                         </div>
 
-                        <div className={`hidden sm:block w-px h-8 shrink-0 ${isLight ? 'bg-slate-200' : 'bg-[#2a2a2a]'}`} />
-
-                        {/* Context breadcrumb — desktop/tablet */}
-                        <div className="hidden sm:flex flex-col min-w-0">
-                            <div className="flex items-center gap-1.5 text-[11px] truncate">
-                                <span className={isLight ? 'text-slate-400' : 'text-gray-500'}>{monthLabel}</span>
-                                <span className={isLight ? 'text-slate-300' : 'text-gray-600'}>/</span>
-                                <span className={`font-semibold truncate ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>{activeLabel}</span>
-                                {viewingBudgetOwner && (
-                                    <>
-                                        <span className={isLight ? 'text-slate-300' : 'text-gray-600'}>·</span>
-                                        <span className={`truncate ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>Shared</span>
-                                    </>
-                                )}
+                        {/* Desktop context */}
+                        <div className="hidden sm:flex items-center gap-3 pl-4 min-w-0 flex-1">
+                            <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/12 text-blue-400'}`}>
+                                <FontAwesomeIcon icon={activeIcon} className="text-sm" />
+                                <span className={`absolute -bottom-px left-2 right-2 h-0.5 rounded-full ${isLight ? 'bg-blue-500' : 'bg-blue-400'}`} />
                             </div>
-                            <p className={`text-[10px] truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                {currencyLabel} · {savingsRate >= 0 ? `${savingsRate}% saved this month` : 'Review spending'}
-                            </p>
+
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <h2 className={`text-[15px] sm:text-base font-semibold truncate tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                        {activeLabel}
+                                    </h2>
+                                    {viewingBudgetOwner && (
+                                        <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${isLight ? 'text-amber-700 bg-amber-50' : 'text-amber-400 bg-amber-500/10'}`}>
+                                            Shared
+                                        </span>
+                                    )}
+                                </div>
+                                <p className={`text-[11px] truncate mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
+                                    <span className={`font-medium ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>{monthLabel}</span>
+                                    <span className="mx-2 opacity-30">|</span>
+                                    <span className={`font-semibold tabular-nums ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>{currencyLabel}</span>
+                                    <span className="mx-2 opacity-30">|</span>
+                                    <span>{contextHint}</span>
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -415,16 +433,15 @@ const Navbar = ({ theme, setTheme, setUser }) => {
 
                     {/* Right: actions */}
                     <div className="flex items-center gap-1 shrink-0">
-                        {/* Quick actions — shortcuts, not full tab nav */}
-                        <div className="relative hidden sm:block" ref={quickRef}>
+                        <div className="relative" ref={quickRef}>
                             <button
                                 type="button"
                                 onClick={() => setQuickOpen(!quickOpen)}
-                                className={`flex items-center gap-2 h-9 px-3 rounded-xl text-xs font-semibold transition-all ${isLight ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200/50' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-900/30'}`}
+                                title="Quick actions"
+                                aria-label="Quick actions"
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${quickOpen ? (isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-950/40 text-blue-400') : (isLight ? 'text-slate-500 hover:bg-slate-100 hover:text-blue-600' : 'text-gray-400 hover:bg-[#161616] hover:text-blue-400')}`}
                             >
-                                <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
-                                <span className="hidden lg:inline">Quick</span>
-                                <FontAwesomeIcon icon={faChevronDown} className={`text-[9px] transition-transform ${quickOpen ? 'rotate-180' : ''}`} />
+                                <FontAwesomeIcon icon={faBolt} className="text-sm" />
                             </button>
                             {quickOpen && (
                                 <div className={`absolute right-0 mt-2 w-52 rounded-xl shadow-xl border overflow-hidden z-50 ${isLight ? 'bg-white border-slate-200' : 'bg-[#141414] border-[#2a2a2a]'}`}>
@@ -451,7 +468,8 @@ const Navbar = ({ theme, setTheme, setUser }) => {
 
                         <button
                             type="button"
-                            onClick={() => setSearchOpen(!searchOpen)}
+                            data-search-toggle
+                            onClick={() => setSearchOpen((open) => !open)}
                             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${searchOpen ? (isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-950/40 text-blue-400') : (isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#161616]')}`}
                             title="Search"
                         >
@@ -615,84 +633,6 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                     )}
                 </div>
             </div>
-
-            {/* Mobile drawer — account & utilities only */}
-            {mobileOpen && (
-                <>
-                    <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
-                    <aside ref={mobileRef} className={`fixed top-0 left-0 z-50 h-full w-[min(300px,85vw)] md:hidden flex flex-col ${isLight ? 'bg-white border-r border-slate-200' : 'bg-[#0c0c0c] border-r border-[#222]'}`}>
-                        <div className={`flex items-center justify-between p-4 border-b ${isLight ? 'border-slate-100' : 'border-[#222]'}`}>
-                            <div>
-                                <p className={`font-bold ${isLight ? 'text-slate-800' : 'text-white'}`}>Menu</p>
-                                <p className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Viewing: {activeLabel}</p>
-                            </div>
-                            <button type="button" onClick={() => setMobileOpen(false)} className={`w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'hover:bg-slate-100' : 'hover:bg-[#1a1a1a]'}`}>
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="p-4 space-y-3 flex-1 overflow-y-auto">
-                            <div className={`rounded-xl p-3 grid grid-cols-3 gap-2 ${isLight ? 'bg-slate-50 border border-slate-200' : 'bg-[#111] border border-[#252525]'}`}>
-                                {[
-                                    { l: 'Income', v: stats.income, t: 'income' },
-                                    { l: 'Spent', v: stats.expenses, t: 'expense' },
-                                    { l: 'Balance', v: stats.balance, t: 'balance' },
-                                ].map(s => (
-                                    <div key={s.l} className="text-center">
-                                        <p className={`text-[9px] uppercase font-semibold ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.l}</p>
-                                        <p className={`text-xs font-bold tabular-nums ${statTone(s.t)}`}>{formatMoney(s.v, activeViewCurrency)}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <p className={`text-[10px] font-semibold uppercase tracking-wider px-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Shortcuts</p>
-                            <div className="space-y-1">
-                                {[
-                                    { label: 'Log expense', tab: 'daily', icon: faPlus },
-                                    { label: 'Monthly budget', tab: 'monthly', icon: faCalendarAlt },
-                                    { label: 'Export report', tab: 'summary', icon: faFileExport },
-                                    { label: 'Settings', tab: 'settings', icon: faGear },
-                                ].map(a => (
-                                    <button key={a.tab} type="button" onClick={() => jumpTo(a.tab)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${isLight ? 'text-slate-700 hover:bg-slate-50' : 'text-gray-300 hover:bg-[#161616]'}`}>
-                                        <FontAwesomeIcon icon={a.icon} className="w-4 text-xs opacity-50" /> {a.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <p className={`text-[10px] font-semibold uppercase tracking-wider px-1 pt-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Account</p>
-                            <div className={`flex items-center justify-between gap-4 px-3 py-3 rounded-xl ${isLight ? 'bg-slate-50' : 'bg-[#111]'}`}>
-                                <div className="flex items-center gap-2.5">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'bg-white text-slate-500 shadow-sm' : 'bg-[#1a1a1a] text-gray-400'}`}>
-                                        <FontAwesomeIcon icon={faCircleHalfStroke} className="text-xs" />
-                                    </div>
-                                    <div>
-                                        <p className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Appearance</p>
-                                        <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{isLight ? 'Light' : 'Dark'}</p>
-                                    </div>
-                                </div>
-                                <ThemeToggle theme={theme} onChange={changeTheme} isLight={isLight} />
-                            </div>
-                            <button type="button" onClick={signOut}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-red-400 hover:bg-red-500/10'}`}>
-                                <FontAwesomeIcon icon={faRightFromBracket} className="opacity-70" /> Sign Out
-                            </button>
-                        </div>
-
-                        {localUser && (
-                            <div className={`p-4 border-t ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-[#222] bg-[#0a0a0a]'}`}>
-                                <div className="flex items-center gap-3">
-                                    <img src={avatarSrc} alt={userName} className="w-9 h-9 rounded-full object-cover" onError={(e) => { e.target.src = Avatar }} />
-                                    <div className="min-w-0">
-                                        <p className={`text-sm font-semibold truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>{userName}</p>
-                                        <p className={`text-[11px] truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{userEmail}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </aside>
-                </>
-            )}
         </header>
     )
 }

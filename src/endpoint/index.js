@@ -38,6 +38,10 @@ endpoint.interceptors.response.use(
 export const login = (formData) => endpoint.post('/user/login', formData)
 export const register = (formData) => endpoint.post('/user/register', formData)
 export const googleLogin = (formData) => endpoint.post('/user/googleLogin', formData)
+export const forgotPassword = (formData) => endpoint.post('/user/forgotPassword', formData)
+export const resetPassword = (formData) => endpoint.post('/user/resetPassword', formData)
+export const verifyEmail = (formData) => endpoint.post('/user/verifyEmail', formData)
+export const sendVerificationEmail = () => endpoint.post('/user/sendVerificationEmail')
 
 /*
     BUDGET
@@ -60,6 +64,8 @@ export const deleteBudgetExpense = (id, params) => endpoint.delete(`/budget/expe
 export const bulkDeleteBudgetExpenses = (formData) => endpoint.post('/budget/expenses/bulkDelete', formData)
 export const bulkUpdateBudgetCategory = (formData) => endpoint.patch('/budget/expenses/bulkCategory', formData)
 export const bulkUpdateBudgetCurrency = (formData) => endpoint.patch('/budget/expenses/bulkCurrency', formData)
+export const bulkUpdateBudgetDate = (formData) => endpoint.patch('/budget/expenses/bulkDate', formData)
+export const bulkUpdateBudgetPaymentMethod = (formData) => endpoint.patch('/budget/expenses/bulkPaymentMethod', formData)
 export const deleteReceipt = (formData) => endpoint.post('/budget/receipt/delete', formData)
 export const getExchangeRates = (params) => endpoint.get('/budget/exchange-rates', { params })
 export const saveExchangeRates = (formData) => endpoint.post('/budget/exchange-rates', formData)
@@ -67,6 +73,9 @@ export const resetExchangeRates = () => endpoint.post('/budget/exchange-rates/re
 export const saveBudgetSettings = (formData) => endpoint.post('/budget/settings', formData)
 export const getSavings = (params) => endpoint.get('/budget/savings', { params })
 export const saveSavings = (formData) => endpoint.post('/budget/savings', formData)
+export const createSavingsAccount = (formData) => endpoint.post('/budget/savings/account', formData)
+export const updateSavingsAccount = (formData) => endpoint.patch('/budget/savings/account', formData)
+export const deleteSavingsAccount = (id, params) => endpoint.delete(`/budget/savings/account/${id}`, { params })
 export const getSavingsHistory = (params) => endpoint.get('/budget/savings/history', { params })
 export const deleteSavingsHistory = (id, params) => endpoint.delete(`/budget/savings/history/${id}`, { params })
 export const getDebts = (params) => endpoint.get('/budget/debts', { params })

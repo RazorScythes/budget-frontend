@@ -87,7 +87,7 @@ export const fixIV = () => new Uint8Array(24);
 
 export const encryptData = async (data) => {
     const cryptoKey = await importKey()
-    if (!cryptoKey) throw new Error("CryptoKey not available");
+    if (!cryptoKey) return btoa(unescape(encodeURIComponent(data)));
 
     const iv = fixIV();
     const encodedData = new TextEncoder().encode(data);
@@ -103,7 +103,7 @@ export const encryptData = async (data) => {
 
 export const decryptData = async (encryptedText) => {
     const cryptoKey = await importKey()
-    if (!cryptoKey) throw new Error("CryptoKey not available");
+    if (!cryptoKey) return decodeURIComponent(escape(atob(encryptedText)));
 
     const iv = fixIV();
     const encryptedArrayBuffer = Uint8Array.from(atob(encryptedText), c => c.charCodeAt(0));

@@ -5,7 +5,8 @@ const initialState = {
     dashboard       : null,
     categories      : [],
     expenses        : [],
-    savings         : {},
+    savings         : [],
+    savingsAccounts : [],
     savingsHistory  : [],
     debts           : [],
     budgetLists     : [],
@@ -193,6 +194,26 @@ export const bulkUpdateBudgetCurrency = createAsyncThunk('budget/bulkUpdateCurre
     }
 })
 
+export const bulkUpdateBudgetDate = createAsyncThunk('budget/bulkUpdateDate', async (data, thunkAPI) => {
+    try {
+        const response = await api.bulkUpdateBudgetDate(data)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to update date' } })
+    }
+})
+
+export const bulkUpdateBudgetPaymentMethod = createAsyncThunk('budget/bulkUpdatePaymentMethod', async (data, thunkAPI) => {
+    try {
+        const response = await api.bulkUpdateBudgetPaymentMethod(data)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to update payment method' } })
+    }
+})
+
 // ==================== EXCHANGE RATES ====================
 
 export const getExchangeRates = createAsyncThunk('budget/getExchangeRates', async (params, thunkAPI) => {
@@ -282,6 +303,36 @@ export const getBudgetSavings = createAsyncThunk('budget/getSavings', async (par
     } catch (err) {
         if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
         return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to load savings' } })
+    }
+})
+
+export const createBudgetSavingsAccount = createAsyncThunk('budget/createSavingsAccount', async (data, thunkAPI) => {
+    try {
+        const response = await api.createSavingsAccount(data)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to create savings account' } })
+    }
+})
+
+export const updateBudgetSavingsAccount = createAsyncThunk('budget/updateSavingsAccount', async (data, thunkAPI) => {
+    try {
+        const response = await api.updateSavingsAccount(data)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to update savings account' } })
+    }
+})
+
+export const deleteBudgetSavingsAccount = createAsyncThunk('budget/deleteSavingsAccount', async ({ id }, thunkAPI) => {
+    try {
+        const response = await api.deleteSavingsAccount(id)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to delete savings account' } })
     }
 })
 
@@ -581,7 +632,8 @@ export const budgetSlice = createSlice({
             state.dashboard = r.dashboard
             state.expenses = r.expenses
             state.categories = r.categories
-            state.savings = r.savings
+            state.savingsAccounts = Array.isArray(r.savings) ? r.savings : []
+            state.savings = state.savingsAccounts
             state.debts = r.debts
             state.budgetLists = r.lists
             state.goals = r.goals
@@ -703,6 +755,18 @@ export const budgetSlice = createSlice({
         })
         builder.addCase(bulkUpdateBudgetCurrency.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
 
+        builder.addCase(bulkUpdateBudgetDate.fulfilled, (state, action) => {
+            state.expenses = action.payload.data.result
+            state.alert = action.payload.data.alert
+        })
+        builder.addCase(bulkUpdateBudgetDate.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+
+        builder.addCase(bulkUpdateBudgetPaymentMethod.fulfilled, (state, action) => {
+            state.expenses = action.payload.data.result
+            state.alert = action.payload.data.alert
+        })
+        builder.addCase(bulkUpdateBudgetPaymentMethod.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+
         // Exchange Rates
         builder.addCase(getExchangeRates.fulfilled, (state, action) => {
             state.exchangeRates = action.payload.data.result.rates
@@ -754,7 +818,8 @@ export const budgetSlice = createSlice({
         // Savings (with loading states - Bug 5 fix)
         builder.addCase(getBudgetSavings.pending, (state) => { state.isSavingsLoading = true })
         builder.addCase(getBudgetSavings.fulfilled, (state, action) => {
-            state.savings = action.payload.data.result || {}
+            state.savingsAccounts = action.payload.data.result || []
+            state.savings = state.savingsAccounts
             state.isSavingsLoading = false
         })
         builder.addCase(getBudgetSavings.rejected, (state, action) => {
@@ -763,10 +828,32 @@ export const budgetSlice = createSlice({
         })
 
         builder.addCase(saveBudgetSavings.fulfilled, (state, action) => {
-            state.savings = action.payload.data.result || {}
+            state.savingsAccounts = action.payload.data.result || []
+            state.savings = state.savingsAccounts
             state.alert = action.payload.data.alert
         })
         builder.addCase(saveBudgetSavings.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+
+        builder.addCase(createBudgetSavingsAccount.fulfilled, (state, action) => {
+            state.savingsAccounts = action.payload.data.result || []
+            state.savings = state.savingsAccounts
+            state.alert = action.payload.data.alert
+        })
+        builder.addCase(createBudgetSavingsAccount.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+
+        builder.addCase(updateBudgetSavingsAccount.fulfilled, (state, action) => {
+            state.savingsAccounts = action.payload.data.result || []
+            state.savings = state.savingsAccounts
+            state.alert = action.payload.data.alert
+        })
+        builder.addCase(updateBudgetSavingsAccount.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+
+        builder.addCase(deleteBudgetSavingsAccount.fulfilled, (state, action) => {
+            state.savingsAccounts = action.payload.data.result || []
+            state.savings = state.savingsAccounts
+            state.alert = action.payload.data.alert
+        })
+        builder.addCase(deleteBudgetSavingsAccount.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
 
         builder.addCase(getBudgetSavingsHistory.pending, (state) => { state.isSavingsLoading = true })
         builder.addCase(getBudgetSavingsHistory.fulfilled, (state, action) => {
@@ -919,7 +1006,10 @@ export const budgetSlice = createSlice({
         setExpenses: (state, action) => { state.expenses = action.payload },
         setCategories: (state, action) => { state.categories = action.payload },
         setDashboard: (state, action) => { state.dashboard = action.payload },
-        setSavings: (state, action) => { state.savings = action.payload },
+        setSavings: (state, action) => {
+            state.savingsAccounts = Array.isArray(action.payload) ? action.payload : []
+            state.savings = state.savingsAccounts
+        },
         setSavingsHistory: (state, action) => { state.savingsHistory = action.payload },
         setDebts: (state, action) => { state.debts = action.payload },
         setBudgetLists: (state, action) => { state.budgetLists = action.payload },

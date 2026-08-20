@@ -148,7 +148,7 @@ const MemberRow = ({ share, isLight, onUpdateRole, onRemove, removingId, setRemo
                     </div>
                 ) : (
                     <button type="button" onClick={() => setRemovingId(su._id)} title="Remove access"
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all opacity-70 sm:opacity-0 sm:group-hover:opacity-100 ${isLight ? 'text-red-500 hover:bg-red-50' : 'text-red-400 hover:bg-red-900/20'}`}>
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isLight ? 'text-red-500 hover:bg-red-50' : 'text-red-400 hover:bg-red-900/20'}`}>
                         <FontAwesomeIcon icon={faTrash} className="text-[11px]" />
                     </button>
                 )}

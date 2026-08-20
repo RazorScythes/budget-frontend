@@ -28,17 +28,15 @@ import('@fortawesome/free-solid-svg-icons').then(m => library.add(m.fas))
 const loadVercelBlob = () => import('@vercel/blob').then(m => m.put)
 import { deleteReceipt as deleteReceiptApi } from '../../endpoint'
 const loadSocketIO = () => import('socket.io-client').then(m => m.io)
-const loadHtml2Canvas = () => import('html2canvas-pro').then(m => m.default)
-const loadJsPDF = () => import('jspdf').then(m => m.jsPDF)
 import { 
     getBudgetInitialLoad,
     getBudgetDashboard, getBudgetCategories, createBudgetCategory, updateBudgetCategory, 
     deleteBudgetCategory, shareBudgetCategory, unshareBudgetCategory,
     getBudgetExpenses, createBudgetExpense, updateBudgetExpense, 
     deleteBudgetExpense, bulkDeleteBudgetExpenses, bulkUpdateBudgetCategory, bulkUpdateBudgetCurrency,
+    bulkUpdateBudgetDate, bulkUpdateBudgetPaymentMethod,
     getExchangeRates, saveExchangeRates, resetExchangeRates, saveBudgetSettings,
     searchBudgetExpenses, importBudgetCSV, processRecurring,
-    getBudgetSavings, saveBudgetSavings, getBudgetSavingsHistory, deleteBudgetSavingsHistory,
     getDebts, createDebt, updateDebt, deleteDebt, addDebtPayment, removeDebtPayment, toggleDebtStatus,
     getBudgetLists, createBudgetList, updateBudgetList, deleteBudgetList,
     getFinancialGoals, createFinancialGoal, updateFinancialGoal, deleteFinancialGoal, addGoalContribution, removeGoalContribution,
@@ -52,6 +50,10 @@ import Notification from '../Custom/Notification'
 import BudgetContext from './Budget/BudgetContext'
 import { ModalOverlay, AnimateIn as AnimateInShared, SafeIcon as SafeIconShared } from './Budget/SharedComponents'
 import ShareBudgetModal from './Budget/ShareBudgetModal'
+import ShareCategoryModal from './Budget/ShareCategoryModal'
+import SavingsTab from './Budget/SavingsTab'
+import { calcAllSavingsTotal, calcAccountTotal } from '../../utils/savings'
+import { generateBudgetSummaryPdf, formatPdfAmount, sanitizePdfText } from '../../utils/budgetSummaryPdf'
 import { toLocalDateString } from './Budget/utils'
 import {
     DEFAULT_PAYMENT_METHODS, CATEGORY_COLORS, MONTHS, VALID_TABS,
@@ -95,7 +97,7 @@ const AnimateIn = ({ children, delay = 0, className = '' }) => {
 
 const Budget = ({ user, theme }) => {
     const dispatch = useDispatch()
-    const { dashboard, categories, expenses, savings, savingsHistory, debts, budgetLists, goals, searchResults, exchangeRates: savedRates, liveRates, baseCurrency: savedBaseCurrency, viewCurrency, budgetSettings, sharedUsers, sharedBudgets, viewingBudgetOwner, alert: budgetAlert, isLoading, isCategoriesLoading, isExpensesLoading, isSavingsLoading, isDebtsLoading, isGoalsLoading, isListsLoading } = useSelector(state => state.budget)
+    const { dashboard, categories, expenses, savingsAccounts, savingsHistory, debts, budgetLists, goals, searchResults, exchangeRates: savedRates, liveRates, baseCurrency: savedBaseCurrency, viewCurrency, budgetSettings, sharedUsers, sharedBudgets, viewingBudgetOwner, alert: budgetAlert, isLoading, isCategoriesLoading, isExpensesLoading, isSavingsLoading, isDebtsLoading, isGoalsLoading, isListsLoading } = useSelector(state => state.budget)
     const [searchParams, setSearchParams] = useSearchParams()
 
     const isLight = theme === 'light'
@@ -568,6 +570,20 @@ const Budget = ({ user, theme }) => {
         dispatch(getBudgetDashboard({ month, year, ...ownerParam }))
     }
 
+    const handleBulkDateUpdate = async (date) => {
+        if (!date) return
+        await dispatch(bulkUpdateBudgetDate({ ids: selectedExpenses, date, month, year, ...ownerParam }))
+        setSelectedExpenses([])
+        dispatch(getBudgetDashboard({ month, year, ...ownerParam }))
+    }
+
+    const handleBulkPaymentMethodUpdate = async (paymentMethod) => {
+        if (!paymentMethod) return
+        await dispatch(bulkUpdateBudgetPaymentMethod({ ids: selectedExpenses, paymentMethod, month, year, ...ownerParam }))
+        setSelectedExpenses([])
+        dispatch(getBudgetDashboard({ month, year, ...ownerParam }))
+    }
+
     const toggleSelectExpense = (id) => {
         setSelectedExpenses(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
     }
@@ -696,6 +712,14 @@ const Budget = ({ user, theme }) => {
                 return {
                     card: `rounded-lg border border-solid ${isLight ? 'bg-white border-slate-200' : 'bg-[#0e0e0e] border-[#2B2B2B]'}`,
                     radius: 'rounded-lg',
+                    // Page layout
+                    contentWidthCls: styles.boxWidthEx,
+                    pageMarginCls: 'my-4 sm:my-6',
+                    tabBarCls: `p-1 rounded-lg ${isLight ? 'bg-slate-100' : 'bg-[#0a0a0a]'}`,
+                    tabRadiusCls: 'rounded-md',
+                    tabLayout: 'segment',
+                    statGridCls: 'grid grid-cols-2 lg:grid-cols-4',
+                    chartGridCls: 'grid grid-cols-1 xl:grid-cols-2',
                     // Layout & density
                     cardPadding: 'p-3 sm:p-4',
                     headerPadding: 'p-3 sm:p-4 mb-3',
@@ -732,6 +756,14 @@ const Budget = ({ user, theme }) => {
                 return {
                     card: `rounded-2xl border border-solid shadow-lg ${isLight ? 'bg-white border-slate-100 shadow-violet-100/50' : 'bg-[#0e0e0e] border-[#2B2B2B] shadow-violet-900/10'}`,
                     radius: 'rounded-xl',
+                    // Page layout
+                    contentWidthCls: styles.boxWidth,
+                    pageMarginCls: 'my-8 sm:my-14',
+                    tabBarCls: '',
+                    tabRadiusCls: 'rounded-xl',
+                    tabLayout: 'pill-lg',
+                    statGridCls: 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4',
+                    chartGridCls: 'grid grid-cols-1 lg:grid-cols-2',
                     // Layout & density
                     cardPadding: 'p-5 sm:p-7',
                     headerPadding: 'p-5 sm:p-7 mb-5',
@@ -768,13 +800,21 @@ const Budget = ({ user, theme }) => {
                 return {
                     card: `rounded-xl ${isLight ? 'bg-white shadow-sm shadow-slate-100' : 'bg-[#0e0e0e]'}`,
                     radius: 'rounded-lg',
+                    // Page layout
+                    contentWidthCls: styles.boxWidth,
+                    pageMarginCls: 'my-8 sm:my-14',
+                    tabBarCls: `border-b border-solid ${isLight ? 'border-slate-200' : 'border-[#222]'} gap-0 pb-0`,
+                    tabRadiusCls: 'rounded-none',
+                    tabLayout: 'underline',
+                    statGridCls: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+                    chartGridCls: 'grid grid-cols-1 lg:grid-cols-2',
                     // Layout & density
                     cardPadding: 'p-5 sm:p-6',
                     headerPadding: 'p-5 sm:p-6 mb-5',
                     sectionGap: 'space-y-5',
                     gridGap: 'gap-4',
-                    tabCls: 'px-3 sm:px-4 py-2 text-xs sm:text-sm',
-                    tabGap: 'gap-2',
+                    tabCls: 'px-3 sm:px-4 py-2.5 text-xs sm:text-sm',
+                    tabGap: 'gap-4 sm:gap-6',
                     tabIconCls: 'hidden',
                     tabShowLabel: true,
                     headerTitleCls: 'text-base sm:text-lg font-semibold',
@@ -785,8 +825,8 @@ const Budget = ({ user, theme }) => {
                     bodyTextCls: 'text-xs',
                     valueTextCls: 'text-lg sm:text-xl font-semibold',
                     // Colors
-                    tabActive: isLight ? 'bg-emerald-500 text-white' : 'bg-emerald-600 text-white',
-                    tabInactive: isLight ? 'text-slate-500 hover:text-emerald-600' : 'text-gray-400 hover:text-emerald-400',
+                    tabActive: isLight ? 'text-emerald-600 bg-transparent font-semibold shadow-[inset_0_-2px_0_0_#10b981]' : 'text-emerald-400 bg-transparent font-semibold shadow-[inset_0_-2px_0_0_#34d399]',
+                    tabInactive: isLight ? 'text-slate-500 hover:text-emerald-600 bg-transparent' : 'text-gray-400 hover:text-emerald-400 bg-transparent',
                     headerIcon: isLight ? 'bg-emerald-50' : 'bg-emerald-900/20',
                     headerIconText: isLight ? 'text-emerald-600' : 'text-emerald-400',
                     accentBg: isLight ? 'bg-emerald-50' : 'bg-emerald-900/10',
@@ -804,6 +844,14 @@ const Budget = ({ user, theme }) => {
                 return {
                     card: `rounded-2xl border border-solid backdrop-blur-md ${isLight ? 'bg-white/60 border-white/40 shadow-lg shadow-slate-200/30' : 'bg-[#0e0e0e]/70 border-[#2B2B2B]/40 shadow-lg shadow-black/20'}`,
                     radius: 'rounded-xl',
+                    // Page layout
+                    contentWidthCls: styles.boxWidthEx,
+                    pageMarginCls: 'my-6 sm:my-10',
+                    tabBarCls: `p-1 rounded-xl backdrop-blur-md border border-solid ${isLight ? 'bg-white/40 border-slate-200/60' : 'bg-[#111]/50 border-[#333]/60'}`,
+                    tabRadiusCls: 'rounded-lg',
+                    tabLayout: 'segment-glass',
+                    statGridCls: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+                    chartGridCls: 'grid grid-cols-1 lg:grid-cols-2',
                     // Layout & density
                     cardPadding: 'p-5 sm:p-6',
                     headerPadding: 'p-5 sm:p-6 mb-4',
@@ -840,6 +888,14 @@ const Budget = ({ user, theme }) => {
                 return {
                     card: `rounded-xl border border-solid ${isLight ? 'bg-white/90 backdrop-blur-sm border-slate-200/80' : 'bg-[#0e0e0e] border-[#2B2B2B]'}`,
                     radius: 'rounded-lg',
+                    // Page layout
+                    contentWidthCls: styles.boxWidthEx,
+                    pageMarginCls: 'my-6 sm:my-12',
+                    tabBarCls: '',
+                    tabRadiusCls: 'rounded-lg',
+                    tabLayout: 'pill',
+                    statGridCls: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+                    chartGridCls: 'grid grid-cols-1 lg:grid-cols-2',
                     // Layout & density
                     cardPadding: 'p-4 sm:p-5',
                     headerPadding: 'p-4 sm:p-6 mb-4',
@@ -1107,7 +1163,7 @@ const Budget = ({ user, theme }) => {
 
     if (!user) {
         return (
-            <div className={`relative overflow-hidden ${main.font} ${isLight ? light.body : dark.body}`}>
+            <div className={`relative overflow-hidden min-h-full w-full ${main.font} ${isLight ? light.body : dark.body}`}>
                 <div className={`${styles.paddingX} ${styles.flexCenter}`}>
                     <div className={`${styles.boxWidthEx}`}>
                         <div className="flex items-center justify-center py-32">
@@ -1133,7 +1189,7 @@ const Budget = ({ user, theme }) => {
 
     return (
         <BudgetContext.Provider value={budgetContextValue}>
-        <div className={`relative overflow-hidden ${main.font} ${isLight ? light.body : dark.body}`}>
+        <div className={`relative overflow-hidden min-h-full w-full ${main.font} ${isLight ? light.body : dark.body}`}>
             <a href="#budget-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[10000] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium">Skip to content</a>
             <style>{`
                 @keyframes barGrow { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
@@ -1141,8 +1197,8 @@ const Budget = ({ user, theme }) => {
                 @keyframes countPulse { 0% { transform: scale(0.95); opacity: 0.6; } 100% { transform: scale(1); opacity: 1; } }
             `}</style>
             <div className={`${styles.paddingX} ${styles.flexCenter}`}>
-                <div className={`${styles.boxWidthEx}`}>
-                    <div className="relative px-0 my-6 sm:my-12">
+                <div className={templateStyles.contentWidthCls}>
+                    <div className={`relative px-0 ${templateStyles.pageMarginCls}`}>
 
                         <Notification theme={theme} data={notification} show={showNotif} setShow={setShowNotif} />
 
@@ -1298,7 +1354,7 @@ const Budget = ({ user, theme }) => {
                             </div>
 
                             {/* Tabs */}
-                            <div className={`flex ${templateStyles.tabGap} mt-4 overflow-x-auto pb-1 -mx-1 px-1`} role="tablist" aria-label="Budget sections"
+                            <div className={`flex flex-nowrap items-center ${templateStyles.tabGap} mt-4 overflow-x-auto overflow-y-hidden -mx-1 px-1 ${templateStyles.tabBarCls}`} role="tablist" aria-label="Budget sections"
                                 onKeyDown={(e) => {
                                     const idx = tabs.findIndex(t => t.id === activeTab)
                                     if (e.key === 'ArrowRight') { e.preventDefault(); setActiveTab(tabs[(idx + 1) % tabs.length].id) }
@@ -1316,7 +1372,7 @@ const Budget = ({ user, theme }) => {
                                         aria-controls={`tabpanel-${tab.id}`}
                                         tabIndex={activeTab === tab.id ? 0 : -1}
                                         onClick={() => setActiveTab(tab.id)}
-                                        className={`flex items-center gap-1.5 sm:gap-2 ${templateStyles.tabCls} ${templateStyles.radius} font-medium whitespace-nowrap transition-all ${
+                                        className={`flex items-center gap-1.5 sm:gap-2 ${templateStyles.tabCls} ${templateStyles.tabRadiusCls} font-medium whitespace-nowrap transition-all ${
                                             activeTab === tab.id
                                                 ? templateStyles.tabActive
                                                 : templateStyles.tabInactive
@@ -1375,7 +1431,7 @@ const Budget = ({ user, theme }) => {
 
                         {/* Tab Content */}
                         <div id="budget-content" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
-                        {activeTab === 'dashboard' && <DashboardTab dashboard={dashboard} expenses={expenses} categories={categories} monthlyBudgetData={monthlyBudgetData} isLight={isLight} card={card} formatCurrency={formatCurrency} formatCurrencyRaw={formatCurrencyRaw} statusColor={statusColor} isLoading={isLoading} activeViewCurrency={activeViewCurrency} toTargetCurrency={toTargetCurrency} month={month} year={year} savings={savings} debts={debts} goals={goals} paymentIcon={paymentIcon} setReceiptViewer={setReceiptViewer} ytdData={ytdData} ytdLoading={ytdLoading} isViewer={isViewer} templateStyles={templateStyles} allocatedPool={allocatedPool} autoSavings={autoSavings} />}
+                        {activeTab === 'dashboard' && <DashboardTab dashboard={dashboard} expenses={expenses} categories={categories} monthlyBudgetData={monthlyBudgetData} isLight={isLight} card={card} formatCurrency={formatCurrency} formatCurrencyRaw={formatCurrencyRaw} statusColor={statusColor} isLoading={isLoading} activeViewCurrency={activeViewCurrency} toTargetCurrency={toTargetCurrency} month={month} year={year} savingsAccounts={savingsAccounts} debts={debts} goals={goals} paymentIcon={paymentIcon} setReceiptViewer={setReceiptViewer} ytdData={ytdData} ytdLoading={ytdLoading} isViewer={isViewer} templateStyles={templateStyles} allocatedPool={allocatedPool} autoSavings={autoSavings} />}
                         {activeTab === 'daily' && (
                             <DailyExpensesTab
                                 groupedByDate={groupedByDate} categories={categories} expenses={expenses}
@@ -1395,6 +1451,8 @@ const Budget = ({ user, theme }) => {
                                 setBulkDeleteConfirm={setBulkDeleteConfirm}
                                 handleBulkCategoryUpdate={handleBulkCategoryUpdate}
                                 handleBulkCurrencyUpdate={handleBulkCurrencyUpdate}
+                                handleBulkDateUpdate={handleBulkDateUpdate}
+                                handleBulkPaymentMethodUpdate={handleBulkPaymentMethodUpdate}
                                 dispatch={dispatch} month={month} year={year} searchResults={searchResults}
                                 attachmentPreview={attachmentPreview} setAttachmentPreview={setAttachmentPreview}
                                 handleReceiptUpload={handleReceiptUpload} removeReceipt={removeReceipt}
@@ -1436,7 +1494,7 @@ const Budget = ({ user, theme }) => {
                             />
                         )}
                         {activeTab === 'savings' && (
-                            <SavingsTab isLight={isLight} card={card} inputCls={inputCls} formatCurrency={formatCurrency} dispatch={dispatch} savings={savings} savingsHistory={savingsHistory} isLoading={isSavingsLoading} isViewer={isViewer} />
+                            <SavingsTab isLight={isLight} card={card} inputCls={inputCls} formatCurrency={formatCurrency} dispatch={dispatch} savingsAccounts={savingsAccounts} savingsHistory={savingsHistory} isLoading={isSavingsLoading} isViewer={isViewer} />
                         )}
                         {activeTab === 'debts' && (
                             <DebtTab
@@ -1471,7 +1529,7 @@ const Budget = ({ user, theme }) => {
                                 formatCurrency={formatCurrency} formatCurrencyRaw={formatCurrencyRaw}
                                 statusColor={statusColor} paymentIcon={paymentIcon} isLoading={isLoading}
                                 activeViewCurrency={activeViewCurrency} toTargetCurrency={toTargetCurrency}
-                                ytdData={ytdData} ytdLoading={ytdLoading}
+                                ytdData={ytdData} ytdLoading={ytdLoading} debts={debts}
                             />
                         )}
                         {activeTab === 'settings' && (
@@ -1574,13 +1632,13 @@ const Budget = ({ user, theme }) => {
 
 // ==================== DASHBOARD TAB ====================
 
-const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetData, isLight, card, formatCurrency, formatCurrencyRaw, statusColor, isLoading, activeViewCurrency, toTargetCurrency, month, year, savings, debts, goals, paymentIcon, setReceiptViewer, ytdData, ytdLoading, isViewer, templateStyles, allocatedPool, autoSavings }) => {
+const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetData, isLight, card, formatCurrency, formatCurrencyRaw, statusColor, isLoading, activeViewCurrency, toTargetCurrency, month, year, savingsAccounts, debts, goals, paymentIcon, setReceiptViewer, ytdData, ytdLoading, isViewer, templateStyles, allocatedPool, autoSavings }) => {
     const pulse = `animate-pulse rounded ${isLight ? 'bg-slate-200/70' : 'bg-[#1f1f1f]'}`
 
     if (isLoading || !dashboard) {
         return (
             <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className={`${templateStyles?.statGridCls || 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'} ${templateStyles?.gridGap || 'gap-4'}`}>
                     {[...Array(4)].map((_, i) => (
                         <div key={i} className={`${card} p-5`}>
                             <div className="flex items-center justify-between mb-3">
@@ -1591,7 +1649,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
                         </div>
                     ))}
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className={`${templateStyles?.chartGridCls || 'grid grid-cols-1 lg:grid-cols-2'} ${templateStyles?.gridGap || 'gap-4'}`}>
                     {[...Array(2)].map((_, i) => (
                         <div key={i} className={`${card} p-5`}>
                             <div className={`h-4 w-40 mb-4 ${pulse}`} />
@@ -1714,10 +1772,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
             .slice(0, 5)
     , [active, activeViewCurrency])
 
-    const savingsTotal = useMemo(() => {
-        if (!savings || typeof savings !== 'object') return 0
-        return Object.entries(savings).reduce((sum, [denom, count]) => sum + (parseInt(denom) || 0) * (parseInt(count) || 0), 0)
-    }, [savings])
+    const savingsTotal = useMemo(() => calcAllSavingsTotal(savingsAccounts), [savingsAccounts])
 
     const activeDebts = debts?.filter(d => d.amount_paid < d.total_amount) || []
 
@@ -1898,7 +1953,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
             {/* Budget Health Score + Spending Insights */}
             {(healthScore.factors.length > 0 || spendingInsights.length > 0) && (
                 <AnimateIn delay={50}>
-                    <div className={`grid grid-cols-1 lg:grid-cols-2 ${templateStyles?.gridGap || 'gap-4'}`}>
+                    <div className={`${templateStyles?.chartGridCls || 'grid grid-cols-1 lg:grid-cols-2'} ${templateStyles?.gridGap || 'gap-4'}`}>
                         {/* Health Score */}
                         <div className={`${card} ${templateStyles?.cardPadding || 'p-5'}`}>
                             <div className="flex items-center gap-3 mb-4">
@@ -1984,7 +2039,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
             )}
 
             {/* Summary Cards */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${templateStyles?.gridGap || 'gap-4'}`}>
+            <div className={`${templateStyles?.statGridCls || 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'} ${templateStyles?.gridGap || 'gap-4'}`}>
                 {summaryCards.map((s, i) => {
                     const cm = colorMap[s.color]
                     return (
@@ -2042,7 +2097,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
 
             {/* Charts */}
             {(topCategories.length > 0 || active.length > 0) && (
-                <AnimateIn delay={380}><div className={`grid grid-cols-1 lg:grid-cols-2 ${templateStyles?.gridGap || 'gap-4'}`}>
+                <AnimateIn delay={380}><div className={`${templateStyles?.chartGridCls || 'grid grid-cols-1 lg:grid-cols-2'} ${templateStyles?.gridGap || 'gap-4'}`}>
                     {/* Spending by Category Pie */}
                     <div className={`${card} ${templateStyles?.cardPadding || 'p-5'}`}>
                         <h3 className={`${templateStyles?.sectionTitleCls || 'text-sm font-semibold'} mb-4 ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Spending by Category</h3>
@@ -2104,7 +2159,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
                 </div></AnimateIn>
             )}
 
-            <AnimateIn delay={400}><div className={`grid grid-cols-1 lg:grid-cols-2 ${templateStyles?.gridGap || 'gap-4'}`}>
+            <AnimateIn delay={400}><div className={`${templateStyles?.chartGridCls || 'grid grid-cols-1 lg:grid-cols-2'} ${templateStyles?.gridGap || 'gap-4'}`}>
                 {/* Top Categories */}
                 <div className={`${card} ${templateStyles?.cardPadding || 'p-5'}`}>
                     <h3 className={`${templateStyles?.sectionTitleCls || 'text-sm font-semibold'} mb-4 ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Top Spending Categories</h3>
@@ -2183,7 +2238,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
             </div></AnimateIn>
 
             {/* Income Sources + Budget Status */}
-            <AnimateIn delay={500}><div className={`grid grid-cols-1 lg:grid-cols-2 ${templateStyles?.gridGap || 'gap-4'}`}>
+            <AnimateIn delay={500}><div className={`${templateStyles?.chartGridCls || 'grid grid-cols-1 lg:grid-cols-2'} ${templateStyles?.gridGap || 'gap-4'}`}>
                 {/* Income Sources */}
                 <div className={`${card} ${templateStyles?.cardPadding || 'p-5'}`}>
                     <h3 className={`${templateStyles?.sectionTitleCls || 'text-sm font-semibold'} mb-4 ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Income Sources</h3>
@@ -2246,7 +2301,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
             </div></AnimateIn>
 
             {/* Recent Transactions + Top Expenses */}
-            <AnimateIn delay={700}><div className={`grid grid-cols-1 lg:grid-cols-2 ${templateStyles?.gridGap || 'gap-4'}`}>
+            <AnimateIn delay={700}><div className={`${templateStyles?.chartGridCls || 'grid grid-cols-1 lg:grid-cols-2'} ${templateStyles?.gridGap || 'gap-4'}`}>
                 {/* Recent Transactions */}
                 <div className={`${card} overflow-hidden`}>
                     <div className={`px-5 py-3.5 border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
@@ -3097,7 +3152,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
             {/* Savings Drilldown Modal */}
             {savingsDrilldown && (
                 <ModalOverlay isLight={isLight} onClose={() => setSavingsDrilldown(null)}>
-                    <div className={`relative w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl shadow-2xl ${isLight ? 'bg-white' : 'bg-[#141414]'} border border-solid ${isLight ? 'border-slate-200' : 'border-[#2B2B2B]'}`} onClick={e => e.stopPropagation()}>
+                    <div className={`relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-2xl shadow-2xl ${isLight ? 'bg-white' : 'bg-[#141414]'} border border-solid ${isLight ? 'border-slate-200' : 'border-[#2B2B2B]'}`} onClick={e => e.stopPropagation()}>
                         <div className={`flex items-center justify-between px-5 py-4 border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'} flex-shrink-0`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'bg-blue-50' : 'bg-blue-900/20'}`}>
@@ -3105,7 +3160,7 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
                                 </div>
                                 <div>
                                     <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-800' : 'text-white'}`}>Savings Breakdown</h3>
-                                    <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Denomination count</p>
+                                    <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{savingsAccounts?.length || 0} account{(savingsAccounts?.length || 0) !== 1 ? 's' : ''}</p>
                                 </div>
                             </div>
                             <button onClick={() => setSavingsDrilldown(null)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-[#1f1f1f] text-gray-500'}`}>
@@ -3117,48 +3172,58 @@ const DashboardTab = React.memo(({ dashboard, expenses, categories, monthlyBudge
                             <p className={`text-xl font-bold ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>{formatCurrency(savingsTotal)}</p>
                         </div>
                         <div className="overflow-y-auto flex-1 min-h-0">
-                            {(() => {
-                                const DENOMS = DENOMINATIONS
-                                const hasSavings = savings && Object.keys(savings).length > 0
-                                const bills = DENOMS.filter(d => d.type === 'bill')
-                                const coins = DENOMS.filter(d => d.type === 'coin')
-                                const totalBills = bills.reduce((s, d) => s + (parseInt(savings?.[d.value]) || 0) * d.value, 0)
-                                const totalCoins = coins.reduce((s, d) => s + (parseInt(savings?.[d.value]) || 0) * d.value, 0)
-                                const renderGroup = (label, denoms, subtotal) => (
-                                    <div className={`px-5 py-3`}>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <p className={`text-[10px] font-semibold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
-                                            <p className={`text-xs font-bold ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{formatCurrency(subtotal)}</p>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            {denoms.map(d => {
-                                                const count = parseInt(savings?.[d.value]) || 0
-                                                const amount = count * d.value
-                                                return (
-                                                    <div key={d.value} className={`flex items-center justify-between py-1 ${count > 0 ? '' : 'opacity-30'}`}>
-                                                        <div className="flex items-center gap-2.5">
-                                                            <span className={`text-xs font-semibold w-14 ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{d.label}</span>
-                                                            <span className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>× {count}</span>
+                            {savingsAccounts?.length > 0 ? (
+                                <div className="divide-y divide-solid" style={{ borderColor: isLight ? '#f1f5f9' : '#1f1f1f' }}>
+                                    {savingsAccounts.map(account => {
+                                        const accountTotal = calcAccountTotal(account)
+                                        const isCash = account.category === 'cash'
+                                        const denoms = account.denominations || {}
+                                        const bills = DENOMINATIONS_CONST.filter(d => d.type === 'bill')
+                                        const coins = DENOMINATIONS_CONST.filter(d => d.type === 'coin')
+                                        const renderDenomGroup = (label, denomList) => (
+                                            <div className="mt-2 space-y-1">
+                                                <p className={`text-[10px] font-semibold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
+                                                {denomList.map(d => {
+                                                    const count = parseInt(denoms[d.value], 10) || 0
+                                                    if (count === 0) return null
+                                                    return (
+                                                        <div key={d.value} className="flex items-center justify-between py-0.5">
+                                                            <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{d.label} × {count}</span>
+                                                            <span className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{formatCurrency(count * d.value)}</span>
                                                         </div>
-                                                        <span className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{formatCurrency(amount)}</span>
+                                                    )
+                                                })}
+                                            </div>
+                                        )
+                                        return (
+                                            <div key={account._id} className="px-5 py-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isCash ? (isLight ? 'bg-amber-50 text-amber-600' : 'bg-amber-500/10 text-amber-400') : (isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-500/10 text-indigo-400')}`}>
+                                                            <FontAwesomeIcon icon={isCash ? faWallet : faUniversity} className="text-xs" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className={`text-sm font-semibold truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>{account.name}</p>
+                                                            <p className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{isCash ? 'Cash' : 'Bank'}{account.isDefault ? ' · Default' : ''}</p>
+                                                        </div>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                )
-                                return hasSavings ? (
-                                    <>
-                                        {renderGroup('Bills', bills, totalBills)}
-                                        <div className={`border-t border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`} />
-                                        {renderGroup('Coins', coins, totalCoins)}
-                                    </>
-                                ) : (
-                                    <div className="flex items-center justify-center py-10">
-                                        <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>No savings recorded.</p>
-                                    </div>
-                                )
-                            })()}
+                                                    <p className={`text-sm font-bold flex-shrink-0 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>{formatCurrency(accountTotal)}</p>
+                                                </div>
+                                                {isCash && accountTotal > 0 && (
+                                                    <div className={`mt-3 pl-10 rounded-lg px-3 py-2 ${isLight ? 'bg-slate-50' : 'bg-white/[0.02]'}`}>
+                                                        {renderDenomGroup('Bills', bills)}
+                                                        {renderDenomGroup('Coins', coins)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center py-10">
+                                    <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>No savings recorded.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </ModalOverlay>
@@ -3280,7 +3345,8 @@ const DailyExpensesTab = React.memo(({
     selectCls, btnPrimary, btnSecondary, formatCurrency, paymentIcon, emptyExpense, isLoading,
     selectedExpenses, toggleSelectExpense, toggleSelectAll, handleBulkDelete,
     bulkDeleteConfirm, setSelectedExpenses, setBulkDeleteConfirm,
-    handleBulkCategoryUpdate, handleBulkCurrencyUpdate, dispatch, month, year, searchResults,
+    handleBulkCategoryUpdate, handleBulkCurrencyUpdate, handleBulkDateUpdate, handleBulkPaymentMethodUpdate,
+    dispatch, month, year, searchResults,
     attachmentPreview, setAttachmentPreview, handleReceiptUpload, removeReceipt,
     uploadingReceipt, setReceiptViewer,
     savedRates, liveRates, savedBaseCurrency,
@@ -3855,10 +3921,11 @@ const DailyExpensesTab = React.memo(({
                             <h4 className={`text-xs font-semibold mb-3 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Search Results ({searchResults.length})</h4>
                             <div className="space-y-1.5 max-h-60 overflow-y-auto">
                                 {searchResults.slice(0, 20).map(e => (
-                                    <div key={e._id} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs ${isLight ? 'hover:bg-slate-50' : 'hover:bg-[#141414]'}`}>
-                                        <div className="flex items-center gap-2 min-w-0">
+                                    <div key={e._id} className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${isLight ? 'hover:bg-slate-50' : 'hover:bg-[#141414]'}`}>
+                                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                                             <span className={isLight ? 'text-slate-400' : 'text-gray-500'}>{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                            <span className={`font-medium truncate ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{e.description}</span>
+                                            <span className={`font-medium whitespace-pre-wrap break-words ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{e.description}</span>
+                                            {e.notes && <span className={`whitespace-pre-wrap break-words ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{e.notes}</span>}
                                         </div>
                                         <div className="text-right flex-shrink-0">
                                             <span className={`font-semibold whitespace-nowrap ${e.type === 'income' ? 'text-emerald-500' : 'text-red-500'}`}>{e.type === 'income' ? '+' : '-'}{formatCurrency(e.amount, e.currency || 'PHP')}</span>
@@ -3975,6 +4042,15 @@ const DailyExpensesTab = React.memo(({
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                             <div className="flex items-center gap-1.5">
+                                <span className={`text-[11px] font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Date:</span>
+                                <input
+                                    type="date"
+                                    onChange={e => { if (e.target.value) handleBulkDateUpdate(e.target.value) }}
+                                    className={`px-2 py-1.5 rounded-lg text-xs border border-solid outline-none cursor-pointer ${isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-[#1a1a1a] border-[#333] text-gray-300'}`}
+                                    title="Set date for selected transactions"
+                                />
+                            </div>
+                            <div className="flex items-center gap-1.5">
                                 <span className={`text-[11px] font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Move to:</span>
                                 <select
                                     defaultValue=""
@@ -3984,6 +4060,17 @@ const DailyExpensesTab = React.memo(({
                                     <option value="" disabled>Select category</option>
                                     <option value="none">Uncategorized</option>
                                     {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className={`text-[11px] font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Payment:</span>
+                                <select
+                                    defaultValue=""
+                                    onChange={e => { if (e.target.value) handleBulkPaymentMethodUpdate(e.target.value); e.target.value = '' }}
+                                    className={`px-2.5 py-1.5 rounded-lg text-xs border border-solid outline-none cursor-pointer ${isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-[#1a1a1a] border-[#333] text-gray-300'}`}
+                                >
+                                    <option value="" disabled>Select method</option>
+                                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
                             </div>
                             <div className="flex items-center gap-1.5">
@@ -4098,7 +4185,7 @@ const DailyExpensesTab = React.memo(({
                                                     updated[idx] = { ...updated[idx], amount: e.target.value }
                                                     setExpenseItems(updated)
                                                 }}
-                                                className={inputCls}
+                                                className={`${inputCls} [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                                                 min="0"
                                                 step="0.01"
                                             />
@@ -4126,14 +4213,14 @@ const DailyExpensesTab = React.memo(({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                             <div>
+                                <label className={`block text-xs font-medium mb-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Notes (optional)</label>
+                                <textarea rows={3} placeholder="Additional notes..." value={expenseForm.notes} onChange={e => setExpenseForm({...expenseForm, notes: e.target.value})} className={`${inputCls} resize-y min-h-[72px]`} />
+                            </div>
+                            <div>
                                 <label className={`block text-xs font-medium mb-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Currency</label>
                                 <select value={expenseForm.currency || 'PHP'} onChange={e => setExpenseForm({...expenseForm, currency: e.target.value})} className={`${selectCls} w-full`}>
                                     {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code} - {c.name}</option>)}
                                 </select>
-                            </div>
-                            <div>
-                                <label className={`block text-xs font-medium mb-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Notes (optional)</label>
-                                <input type="text" placeholder="Additional notes..." value={expenseForm.notes} onChange={e => setExpenseForm({...expenseForm, notes: e.target.value})} className={inputCls} />
                             </div>
                         </div>
 
@@ -4299,15 +4386,15 @@ const DailyExpensesTab = React.memo(({
                                                         key={e._id}
                                                         className={`group transition-colors ${e.listOnly ? (isLight ? 'opacity-60' : 'opacity-50') : ''} ${isSelected ? (isLight ? 'bg-blue-50/60' : 'bg-blue-900/10') : (isLight ? 'hover:bg-slate-50/50' : 'hover:bg-[#111]')} border-b border-solid ${isLight ? 'border-slate-50' : 'border-[#1a1a1a]'}`}
                                                     >
-                                                        <td className="px-4 py-2.5 text-center">
+                                                        <td className="px-4 py-2.5 text-center align-top">
                                                             <input type="checkbox" checked={isSelected} onChange={() => toggleSelectExpense(e._id)} className="w-3.5 h-3.5 rounded cursor-pointer accent-blue-500" />
                                                         </td>
-                                                        <td className={`px-3 py-2.5 text-xs whitespace-nowrap ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                        <td className={`px-3 py-2.5 text-xs whitespace-nowrap align-top ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                                                             {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                         </td>
-                                                        <td className="px-3 py-2.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <p className={`text-sm font-medium truncate max-w-[180px] ${e.listOnly ? 'line-through' : ''} ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{e.description}</p>
+                                                        <td className="px-3 py-2.5 align-top">
+                                                            <div className="flex items-start gap-1.5 flex-wrap">
+                                                                <p className={`text-sm font-medium whitespace-pre-wrap break-words max-w-[220px] ${e.listOnly ? 'line-through' : ''} ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{e.description}</p>
                                                                 {e.listOnly && (
                                                                     <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${isLight ? 'bg-amber-100 text-amber-600' : 'bg-amber-900/30 text-amber-400'}`}>
                                                                         <FontAwesomeIcon icon={faEye} className="text-[7px]" />
@@ -4321,9 +4408,9 @@ const DailyExpensesTab = React.memo(({
                                                                     </button>
                                                                 )}
                                                             </div>
-                                                            {e.notes && <p className={`text-[11px] truncate max-w-[200px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>{e.notes}</p>}
+                                                            {e.notes && <p className={`text-[11px] whitespace-pre-wrap break-words max-w-[220px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>{e.notes}</p>}
                                                         </td>
-                                                        <td className="px-3 py-2.5">
+                                                        <td className="px-3 py-2.5 align-top">
                                                             <div className="flex items-center gap-1.5">
                                                                 <div className="w-4.5 h-4.5 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: (e.category?.color || '#94a3b8') + '20' }}>
                                                                     {e.category?.icon ? <SafeIcon name={e.category.icon} cls="text-[10px]" style={{ color: e.category.color }} /> : <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: e.category?.color || '#94a3b8' }} />}
@@ -4331,13 +4418,13 @@ const DailyExpensesTab = React.memo(({
                                                                 <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{e.category?.name || 'Uncategorized'}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-3 py-2.5">
+                                                        <td className="px-3 py-2.5 align-top">
                                                             <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-[#1a1a1a] text-gray-400'}`}>
                                                                 <FontAwesomeIcon icon={paymentIcon(e.paymentMethod)} className="text-[10px]" />
                                                                 {e.paymentMethod}
                                                             </span>
                                                         </td>
-                                                        <td className="px-3 py-2.5 text-right">
+                                                        <td className="px-3 py-2.5 text-right align-top">
                                                             {converted !== null ? (
                                                                 <>
                                                                     <span className={`text-sm font-semibold whitespace-nowrap ${e.listOnly ? (isLight ? 'text-slate-400 line-through' : 'text-gray-500 line-through') : (e.type === 'income' ? 'text-emerald-500' : 'text-red-500')}`}>
@@ -4353,7 +4440,7 @@ const DailyExpensesTab = React.memo(({
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        <td className="px-3 py-2.5 text-right">
+                                                        <td className="px-3 py-2.5 text-right align-top">
                                                             <div className="flex items-center justify-end gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                                                                 {!isViewer && <>
                                                                 <button
@@ -4473,7 +4560,7 @@ const DailyExpensesTab = React.memo(({
                                                 {cat?.icon ? <SafeIcon name={cat.icon} cls="text-[11px]" style={{ color: cat.color }} /> : <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat?.color || '#94a3b8' }} />}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-sm font-medium truncate ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{t.description}</p>
+                                                <p className={`text-sm font-medium whitespace-pre-wrap break-words ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{t.description}</p>
                                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-900/20 text-blue-400'}`}>
                                                         {t.recurrenceRule}
@@ -4772,26 +4859,18 @@ const CategoriesTab = React.memo(({
 }) => {
     const [showIconPicker, setShowIconPicker] = useState(false)
     const [iconSearch, setIconSearch] = useState('')
-    const [shareTarget, setShareTarget] = useState(null)
-    const [shareUsername, setShareUsername] = useState('')
-    const [shareLoading, setShareLoading] = useState(false)
+    const [shareTargetId, setShareTargetId] = useState(null)
+    const shareCategory = shareTargetId ? categories.find(c => c._id === shareTargetId) : null
     const pulse = `animate-pulse rounded ${isLight ? 'bg-slate-200/70' : 'bg-[#1f1f1f]'}`
 
-    const handleShareCategory = async () => {
-        if (!shareUsername || !shareTarget) return
-        setShareLoading(true)
-        try {
-            await dispatch(shareBudgetCategory({ id: shareTarget._id, username: shareUsername })).unwrap()
-            setShareUsername('')
-            setShareTarget(null)
-        } catch (err) { console.error('Share failed:', err) }
-        setShareLoading(false)
+    const handleShareCategory = async (username) => {
+        if (!shareCategory) return
+        await dispatch(shareBudgetCategory({ id: shareCategory._id, username })).unwrap()
     }
 
-    const handleUnshareCategory = async (categoryId, targetUserId) => {
-        try {
-            await dispatch(unshareBudgetCategory({ id: categoryId, targetUserId })).unwrap()
-        } catch (err) { console.error('Unshare failed:', err) }
+    const handleUnshareCategory = async (targetUserId) => {
+        if (!shareCategory) return
+        await dispatch(unshareBudgetCategory({ id: shareCategory._id, targetUserId })).unwrap()
     }
 
     if (isLoading) {
@@ -4988,7 +5067,7 @@ const CategoriesTab = React.memo(({
                                 </div>
                                 {isOwner && !isViewer ? (
                                 <div className="flex items-center gap-1 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
-                                    <button onClick={() => setShareTarget(cat)} className={`w-7 h-7 rounded-md flex items-center justify-center ${isLight ? 'hover:bg-emerald-100 text-emerald-500' : 'hover:bg-emerald-900/30 text-emerald-400'}`} title="Share">
+                                    <button onClick={() => setShareTargetId(cat._id)} className={`w-7 h-7 rounded-md flex items-center justify-center ${isLight ? 'hover:bg-emerald-100 text-emerald-500' : 'hover:bg-emerald-900/30 text-emerald-400'}`} title="Share">
                                         <FontAwesomeIcon icon={faUserFriends} className="text-[10px]" />
                                     </button>
                                     <button onClick={() => handleEditCategory(cat)} className={`w-7 h-7 rounded-md flex items-center justify-center ${isLight ? 'hover:bg-blue-100 text-blue-500' : 'hover:bg-blue-900/30 text-blue-400'}`} title="Edit">
@@ -5055,338 +5134,14 @@ const CategoriesTab = React.memo(({
                 )}
             </div></AnimateIn>
 
-            {/* Share Category Modal */}
-            {shareTarget && (
-                <ModalOverlay isLight={isLight} onClose={() => { setShareTarget(null); setShareUsername('') }}>
-                    <div className={`relative w-full max-w-sm rounded-2xl shadow-2xl ${isLight ? 'bg-white' : 'bg-[#141414]'} border border-solid ${isLight ? 'border-slate-200' : 'border-[#2B2B2B]'} p-5`} onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: shareTarget.color + '20' }}>
-                                    {shareTarget.icon ? <SafeIcon name={shareTarget.icon} cls="text-sm" style={{ color: shareTarget.color }} /> : <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: shareTarget.color }} />}
-                                </div>
-                                <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Share "{shareTarget.name}"</h3>
-                            </div>
-                            <button onClick={() => { setShareTarget(null); setShareUsername('') }} className={`w-7 h-7 rounded-lg flex items-center justify-center ${isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-[#1f1f1f] text-gray-500'}`}>
-                                <FontAwesomeIcon icon={faTimes} className="text-xs" />
-                            </button>
-                        </div>
-                        <div className="flex gap-2 mb-3">
-                            <input type="text" placeholder="Enter username" value={shareUsername} onChange={e => setShareUsername(e.target.value)} className={`${inputCls} flex-1`} onKeyDown={e => e.key === 'Enter' && handleShareCategory()} />
-                            <button onClick={handleShareCategory} disabled={!shareUsername || shareLoading} className={`${btnPrimary} !text-xs !px-3 disabled:opacity-40`}>
-                                {shareLoading ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : 'Share'}
-                            </button>
-                        </div>
-                        {shareTarget.sharedWith?.length > 0 && (
-                            <div>
-                                <p className={`text-[11px] font-medium mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Shared with:</p>
-                                <div className="space-y-1.5">
-                                    {shareTarget.sharedWith.map((user, i) => {
-                                        const uid = typeof user === 'object' ? user._id : user
-                                        const name = typeof user === 'object' ? user.username : user
-                                        const avatar = typeof user === 'object' ? user.avatar : null
-                                        return (
-                                            <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-[#0a0a0a]'}`}>
-                                                <div className="flex items-center gap-2">
-                                                    {avatar ? (
-                                                        <img src={avatar} alt="" className="w-5 h-5 rounded-full object-cover" />
-                                                    ) : (
-                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isLight ? 'bg-blue-100 text-blue-600' : 'bg-blue-900/30 text-blue-400'}`}>
-                                                            {(name || '?')[0].toUpperCase()}
-                                                        </div>
-                                                    )}
-                                                    <span className={`text-xs font-medium ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{name}</span>
-                                                </div>
-                                                <button onClick={() => handleUnshareCategory(shareTarget._id, uid)} className={`text-[10px] ${isLight ? 'text-red-500 hover:text-red-600' : 'text-red-400 hover:text-red-300'}`}>
-                                                    <FontAwesomeIcon icon={faTimes} />
-                                                </button>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </ModalOverlay>
-            )}
-        </div>
-    )
-})
-
-// ==================== SAVINGS TAB ====================
-
-const DENOMINATIONS = DENOMINATIONS_CONST
-
-const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispatch, savings, savingsHistory, isLoading, isViewer }) => {
-    const [counts, setCounts] = useState(() => {
-        const init = {}
-        DENOMINATIONS.forEach(d => { init[d.value] = '' })
-        return init
-    })
-    const [hasChanges, setHasChanges] = useState(false)
-    const [subTab, setSubTab] = useState('counter')
-    const [deleteModal, setDeleteModal] = useState(null)
-
-    useEffect(() => {
-        dispatch(getBudgetSavingsHistory({}))
-    }, [dispatch])
-
-    useEffect(() => {
-        if (savings && typeof savings === 'object') {
-            const restored = {}
-            DENOMINATIONS.forEach(d => {
-                const val = savings[d.value]
-                restored[d.value] = val ? parseInt(val) : ''
-            })
-            setCounts(restored)
-            setHasChanges(false)
-        }
-    }, [savings])
-
-    const updateCount = (denom, val) => {
-        const n = val === '' ? '' : parseInt(val) || 0
-        setCounts(prev => ({ ...prev, [denom]: n }))
-        setHasChanges(true)
-    }
-
-    const getAmount = (denom) => {
-        const c = counts[denom]
-        return (c === '' ? 0 : c) * denom
-    }
-
-    const billsDenoms = DENOMINATIONS.filter(d => d.type === 'bill')
-    const coinsDenoms = DENOMINATIONS.filter(d => d.type === 'coin')
-
-    const totalBills = billsDenoms.reduce((s, d) => s + getAmount(d.value), 0)
-    const totalCoins = coinsDenoms.reduce((s, d) => s + getAmount(d.value), 0)
-    const grandTotal = totalBills + totalCoins
-
-    const handleSave = async () => {
-        const denominations = {}
-        DENOMINATIONS.forEach(d => { denominations[d.value] = counts[d.value] === '' ? 0 : counts[d.value] })
-        await dispatch(saveBudgetSavings({ denominations }))
-        dispatch(getBudgetSavingsHistory({}))
-        setHasChanges(false)
-    }
-
-    const handleClear = () => {
-        const init = {}
-        DENOMINATIONS.forEach(d => { init[d.value] = '' })
-        setCounts(init)
-        setHasChanges(true)
-    }
-
-    const handleDeleteHistory = (id) => {
-        setDeleteModal({ id, title: 'Delete History Entry', message: 'Are you sure you want to delete this savings history entry?' })
-    }
-
-    const confirmDeleteHistory = async (id) => {
-        dispatch(deleteBudgetSavingsHistory({ id }))
-        setDeleteModal(null)
-    }
-
-    const rowBg = (i) => isLight
-        ? i % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'
-        : i % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'
-
-    const savingsSubTabs = [
-        { id: 'counter', label: 'Counter', icon: faCoins },
-        { id: 'history', label: 'History', icon: faHistory },
-    ]
-
-    const pulse = `animate-pulse rounded ${isLight ? 'bg-slate-200/70' : 'bg-[#1f1f1f]'}`
-
-    if (isLoading) {
-        return (
-            <div className="space-y-4">
-                <div className={`${card} p-5`}>
-                    <div className={`h-4 w-28 mb-4 ${pulse}`} />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {[...Array(8)].map((_, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                                <div className={`w-8 h-8 rounded-lg ${pulse}`} />
-                                <div className="flex-1 space-y-1">
-                                    <div className={`h-3 w-10 ${pulse}`} />
-                                    <div className={`h-3 w-14 ${pulse}`} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className={`${card} p-5`}>
-                    <div className={`h-6 w-32 mx-auto ${pulse}`} />
-                </div>
-            </div>
-        )
-    }
-
-    return (
-        <div className="space-y-5">
-            {/* Sub Tabs */}
-            <AnimateIn delay={0}><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
-                <div className="flex items-center gap-1">
-                    {savingsSubTabs.map(t => (
-                        <button key={t.id} onClick={() => setSubTab(t.id)} className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${subTab === t.id ? (isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/10 text-blue-400') : (isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-white/5')}`}>
-                            <FontAwesomeIcon icon={t.icon} className="text-[10px]" />
-                            {t.label}
-                            {t.id === 'history' && savingsHistory?.length > 0 && <span className={`ml-0.5 text-[10px] px-1.5 py-0.5 rounded-full ${subTab === t.id ? (isLight ? 'bg-blue-100' : 'bg-blue-500/20') : (isLight ? 'bg-slate-200' : 'bg-white/10')}`}>{savingsHistory.length}</span>}
-                        </button>
-                    ))}
-                </div>
-                {subTab === 'counter' && (
-                    <div className="flex items-center gap-2">
-                        {!isViewer && <button onClick={handleClear} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-600' : 'bg-[#1f1f1f] hover:bg-[#2a2a2a] text-gray-400'}`}>
-                            Clear All
-                        </button>}
-                        {hasChanges && !isViewer && (
-                            <button onClick={handleSave} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isLight ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
-                                <FontAwesomeIcon icon={faCheck} className="mr-1" /> Save
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div></AnimateIn>
-
-            {subTab === 'counter' && <>
-            {/* Grand Total Card */}
-            <AnimateIn delay={100}><div className={`${card} p-4 sm:p-5`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${isLight ? 'bg-blue-50 text-blue-500' : 'bg-blue-500/10 text-blue-400'}`}>
-                            <FontAwesomeIcon icon={faPiggyBank} className="text-base sm:text-lg" />
-                        </div>
-                        <div>
-                            <p className={`text-[11px] sm:text-xs font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>TOTAL</p>
-                            <p className={`text-xl sm:text-2xl font-bold tracking-tight ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>{formatCurrency(grandTotal)}</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-4 sm:gap-6 ml-13 sm:ml-0">
-                        <div className="sm:text-right">
-                            <p className={`text-[10px] uppercase tracking-wider font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Bills</p>
-                            <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{formatCurrency(totalBills)}</p>
-                        </div>
-                        <div className="sm:text-right">
-                            <p className={`text-[10px] uppercase tracking-wider font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Coins</p>
-                            <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{formatCurrency(totalCoins)}</p>
-                        </div>
-                    </div>
-                </div>
-            </div></AnimateIn>
-
-            {/* Denomination Table */}
-            <AnimateIn delay={200}><div className={`${card} overflow-hidden`}>
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className={isLight ? 'bg-slate-50 border-b border-solid border-slate-200/80' : 'bg-white/[0.03] border-b border-solid border-[#2B2B2B]'}>
-                            <th className={`text-left px-3 sm:px-5 py-3 font-semibold text-[11px] sm:text-xs uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Denomination</th>
-                            <th className={`text-center px-3 sm:px-5 py-3 font-semibold text-[11px] sm:text-xs uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Qty</th>
-                            <th className={`text-right px-3 sm:px-5 py-3 font-semibold text-[11px] sm:text-xs uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {DENOMINATIONS.map((d, i) => {
-                            const amt = getAmount(d.value)
-                            return (
-                                <tr key={d.value} className={`${rowBg(i)} border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'} transition-colors ${amt > 0 ? (isLight ? '!bg-blue-50/50' : '!bg-blue-500/[0.04]') : ''}`}>
-                                    <td className="px-3 sm:px-5 py-2.5 sm:py-3">
-                                        <div className="flex items-center gap-2 sm:gap-2.5">
-                                            <span className={`inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-[10px] sm:text-xs font-bold ${d.type === 'bill' ? (isLight ? 'bg-green-100 text-green-700' : 'bg-green-500/15 text-green-400') : (isLight ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/15 text-amber-400')}`}>
-                                                <FontAwesomeIcon icon={d.type === 'bill' ? faMoneyBillWave : faCoins} />
-                                            </span>
-                                            <span className={`font-semibold text-xs sm:text-sm ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{d.label}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-2 sm:px-5 py-2">
-                                        <div className="flex justify-center">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                value={counts[d.value]}
-                                                onChange={e => updateCount(d.value, e.target.value)}
-                                                placeholder="0"
-                                                disabled={isViewer}
-                                                className={`${inputCls} w-16 sm:w-24 text-center !py-1.5 ${isViewer ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                            />
-                                        </div>
-                                    </td>
-                                    <td className={`px-3 sm:px-5 py-2.5 sm:py-3 text-right font-semibold tabular-nums text-xs sm:text-sm ${amt > 0 ? (isLight ? 'text-blue-600' : 'text-blue-400') : (isLight ? 'text-slate-300' : 'text-gray-600')}`}>
-                                        {formatCurrency(amt)}
-                                    </td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                    <tfoot>
-                        <tr className={`border-t-2 border-solid ${isLight ? 'border-slate-200 bg-slate-50' : 'border-[#2B2B2B] bg-white/[0.03]'}`}>
-                            <td className={`px-3 sm:px-5 py-2.5 sm:py-3 font-bold text-xs sm:text-sm ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>BILLS</td>
-                            <td></td>
-                            <td className={`px-3 sm:px-5 py-2.5 sm:py-3 text-right font-bold tabular-nums text-xs sm:text-sm ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{formatCurrency(totalBills)}</td>
-                        </tr>
-                        <tr className={isLight ? 'bg-slate-50' : 'bg-white/[0.03]'}>
-                            <td className={`px-3 sm:px-5 py-2.5 sm:py-3 font-bold text-xs sm:text-sm ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>COINS</td>
-                            <td></td>
-                            <td className={`px-3 sm:px-5 py-2.5 sm:py-3 text-right font-bold tabular-nums text-xs sm:text-sm ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{formatCurrency(totalCoins)}</td>
-                        </tr>
-                        <tr className={`border-t-2 border-solid ${isLight ? 'border-blue-200 bg-blue-50' : 'border-blue-500/20 bg-blue-500/[0.06]'}`}>
-                            <td className={`px-3 sm:px-5 py-3 sm:py-4 font-bold text-sm sm:text-base ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>TOTAL</td>
-                            <td></td>
-                            <td className={`px-3 sm:px-5 py-3 sm:py-4 text-right font-bold text-sm sm:text-base tabular-nums ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>{formatCurrency(grandTotal)}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div></AnimateIn>
-            </>}
-
-            {subTab === 'history' && (
-                savingsHistory && savingsHistory.length > 0 ? (
-                    <div className={`${card} overflow-hidden`}>
-                        <div className="divide-y divide-solid" style={{ borderColor: isLight ? '#f1f5f9' : '#1f1f1f' }}>
-                            {savingsHistory.map((entry, idx) => (
-                                <div key={entry._id || idx} className={`px-3 sm:px-5 py-3 sm:py-3.5 ${isLight ? 'hover:bg-slate-50/50' : 'hover:bg-white/[0.02]'} transition-colors`}>
-                                    <div className="flex items-start sm:items-center justify-between gap-2 mb-2">
-                                        <span className={`text-[11px] sm:text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                            {new Date(entry.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                                            {' · '}
-                                            {new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                        </span>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                            <span className={`text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${entry.diffTotal > 0 ? (isLight ? 'bg-green-100 text-green-700' : 'bg-green-500/15 text-green-400') : entry.diffTotal < 0 ? (isLight ? 'bg-red-100 text-red-700' : 'bg-red-500/15 text-red-400') : (isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-gray-400')}`}>
-                                                {entry.diffTotal > 0 ? '+' : ''}{formatCurrency(entry.diffTotal)}
-                                            </span>
-                                            {!isViewer && <button onClick={() => handleDeleteHistory(entry._id)} className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${isLight ? 'hover:bg-red-50 text-red-500' : 'hover:bg-red-900/20 text-red-400'}`}>
-                                                <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
-                                            </button>}
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                                        {entry.changes.map((c, ci) => (
-                                            <span key={ci} className={`inline-flex items-center gap-1 text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md ${c.diff > 0 ? (isLight ? 'bg-green-50 text-green-600' : 'bg-green-500/10 text-green-400') : (isLight ? 'bg-red-50 text-red-600' : 'bg-red-500/10 text-red-400')}`}>
-                                                <FontAwesomeIcon icon={c.diff > 0 ? faArrowUp : faArrowDown} className="text-[8px] sm:text-[10px]" />
-                                                ₱{c.denomination}
-                                                <span className="font-semibold">{c.diff > 0 ? '+' : ''}{c.diff}</span>
-                                                <span className="opacity-50 hidden sm:inline">({c.previous}→{c.current})</span>
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <div className={`flex items-center gap-2 sm:gap-3 mt-2 text-[10px] sm:text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                        <span>Before: {formatCurrency(entry.previousTotal)}</span>
-                                        <span>→</span>
-                                        <span>After: {formatCurrency(entry.newTotal)}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className={`${card} text-center py-16 px-5`}>
-                        <FontAwesomeIcon icon={faHistory} className={`text-3xl mb-3 ${isLight ? 'text-slate-300' : 'text-gray-600'}`} />
-                        <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>No changes recorded yet.</p>
-                        <p className={`text-xs mt-1 ${isLight ? 'text-slate-300' : 'text-gray-600'}`}>Save your denomination counts to start tracking.</p>
-                    </div>
-                )
-            )}
-
-            {deleteModal && (
-                <DeleteConfirmModal isLight={isLight} title={deleteModal.title} message={deleteModal.message} onCancel={() => setDeleteModal(null)} onConfirm={() => confirmDeleteHistory(deleteModal.id)} />
+            {shareCategory && (
+                <ShareCategoryModal
+                    category={shareCategory}
+                    isLight={isLight}
+                    onClose={() => setShareTargetId(null)}
+                    onShare={handleShareCategory}
+                    onUnshare={handleUnshareCategory}
+                />
             )}
         </div>
     )
@@ -6395,82 +6150,244 @@ const QuickAddItem = ({ list, quickAddItem, isLight, inputCls }) => {
 
 // ==================== SUMMARY TAB ====================
 
-const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetData, groupedByDate, month, year, isLight, card, formatCurrency, formatCurrencyRaw, statusColor, paymentIcon, isLoading, activeViewCurrency, toTargetCurrency, ytdData, ytdLoading }) => {
-    const summaryRef = useRef(null)
+const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetData, groupedByDate, month, year, isLight, card, formatCurrency, formatCurrencyRaw, statusColor, paymentIcon, isLoading, activeViewCurrency, toTargetCurrency, ytdData, ytdLoading, debts }) => {
     const [downloading, setDownloading] = useState(false)
     const [pdfError, setPdfError] = useState('')
     const pulse = `animate-pulse rounded ${isLight ? 'bg-slate-200/70' : 'bg-[#1f1f1f]'}`
 
-    const PDF_WIDTH = 800
-
     const handleDownloadPDF = async () => {
-        if (!summaryRef.current || downloading) return
+        if (downloading) return
         setDownloading(true)
-
-        const el = summaryRef.current
-        const origWidth = el.style.width
-        const origMinWidth = el.style.minWidth
-        const origMaxWidth = el.style.maxWidth
-        const origOverflow = el.style.overflow
-
-        const scrollEls = el.querySelectorAll('.overflow-x-auto')
-        const origScrollStyles = Array.from(scrollEls).map(s => ({ overflow: s.style.overflow, mx: s.style.marginLeft + '|' + s.style.marginRight, px: s.style.paddingLeft + '|' + s.style.paddingRight }))
-        scrollEls.forEach(s => { s.style.overflow = 'visible'; s.style.marginLeft = '0'; s.style.marginRight = '0'; s.style.paddingLeft = '0'; s.style.paddingRight = '0' })
+        setPdfError('')
 
         try {
-            el.style.width = `${PDF_WIDTH}px`
-            el.style.minWidth = `${PDF_WIDTH}px`
-            el.style.maxWidth = `${PDF_WIDTH}px`
-            el.style.overflow = 'visible'
+            const convert = (amt, cur) => toTargetCurrency(amt, cur || 'PHP', activeViewCurrency) ?? amt
+            const pdfCurrency = (v, code = activeViewCurrency) => formatPdfAmount(v, code)
+            const active = expenses.filter(e => !e.listOnly)
+            const totalIncome = active.filter(e => e.type === 'income').reduce((s, e) => s + convert(e.amount, e.currency), 0)
+            const totalExpenses = active.filter(e => e.type === 'expense').reduce((s, e) => s + convert(e.amount, e.currency), 0)
+            const balance = totalIncome - totalExpenses
+            const totalBudget = monthlyBudgetData.reduce((s, c) => s + (c.budget || 0), 0)
+            const remainingBudget = totalBudget - totalExpenses
+            const budgetUsedPct = totalBudget > 0 ? Math.round((totalExpenses / totalBudget) * 100) : 0
+            const daysInMonth = new Date(year, month, 0).getDate()
+            const dailyAvg = active.length > 0 ? totalExpenses / daysInMonth : 0
 
-            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+            const expenseCats = categories.filter(c => c.type === 'expense')
+            const incomeCats = categories.filter(c => c.type === 'income')
 
-            const html2canvas = await loadHtml2Canvas()
-            const canvas = await html2canvas(el, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: isLight ? '#ffffff' : '#0a0a0a',
-                windowWidth: PDF_WIDTH,
-                width: PDF_WIDTH,
+            const catSpending = expenseCats.map(cat => {
+                const spent = active.filter(e => e.category?._id === cat._id && e.type === 'expense').reduce((s, e) => s + convert(e.amount, e.currency), 0)
+                return { ...cat, spent }
+            }).filter(c => c.spent > 0).sort((a, b) => b.spent - a.spent)
+
+            const catIncome = incomeCats.map(cat => {
+                const earned = active.filter(e => e.category?._id === cat._id && e.type === 'income').reduce((s, e) => s + convert(e.amount, e.currency), 0)
+                return { ...cat, earned }
+            }).filter(c => c.earned > 0).sort((a, b) => b.earned - a.earned)
+
+            const paymentMap = {}
+            active.filter(e => e.type === 'expense').forEach(e => {
+                const m = e.paymentMethod || 'Cash'
+                if (!paymentMap[m]) paymentMap[m] = 0
+                paymentMap[m] += convert(e.amount, e.currency)
+            })
+            const sortedPayments = Object.entries(paymentMap).sort((a, b) => b[1] - a[1])
+
+            const expenseRows = catSpending.map(cat => ({
+                label: sanitizePdfText(cat.name),
+                value: pdfCurrency(cat.spent),
+                sub: totalExpenses > 0 ? `${Math.round((cat.spent / totalExpenses) * 100)}% of expenses` : undefined,
+            }))
+
+            const incomeRows = catIncome.map(cat => ({
+                label: sanitizePdfText(cat.name),
+                value: pdfCurrency(cat.earned),
+                sub: totalIncome > 0 ? `${Math.round((cat.earned / totalIncome) * 100)}% of income` : undefined,
+            }))
+
+            const budgetTable = monthlyBudgetData.length > 0 ? {
+                rows: monthlyBudgetData.map(cat => [
+                    sanitizePdfText(cat.name),
+                    pdfCurrency(cat.budget),
+                    pdfCurrency(cat.spent),
+                    pdfCurrency(cat.remaining),
+                    cat.budget > 0 ? `${cat.percentage}%` : '—',
+                ]),
+                rowMeta: monthlyBudgetData.map(cat => ({
+                    remaining: cat.remaining,
+                    percentage: cat.percentage,
+                    budget: cat.budget,
+                })),
+                foot: [
+                    'Total',
+                    pdfCurrency(totalBudget),
+                    pdfCurrency(totalExpenses),
+                    pdfCurrency(remainingBudget),
+                    `${budgetUsedPct}%`,
+                ],
+            } : null
+
+            const paymentRows = sortedPayments.map(([method, amount]) => [
+                sanitizePdfText(method),
+                pdfCurrency(amount),
+                totalExpenses > 0 ? `${Math.round((amount / totalExpenses) * 100)}%` : '—',
+            ])
+
+            const ytdCards = ytdData && !ytdLoading ? [
+                { label: 'YTD Income', value: pdfCurrency(ytdData.ytdIncome), tone: 'emerald' },
+                { label: 'YTD Expenses', value: pdfCurrency(ytdData.ytdExpense), tone: 'red' },
+                { label: 'Net Balance', value: pdfCurrency(ytdData.ytdBalance), tone: ytdData.ytdBalance >= 0 ? 'blue' : 'red' },
+                { label: 'Monthly Avg', value: pdfCurrency(ytdData.monthlyAvg), tone: 'amber' },
+            ] : null
+
+            const ytdMonthlyRows = ytdData?.monthlyBreakdown
+                ? Array.from({ length: month }, (_, i) => {
+                    const data = ytdData.monthlyBreakdown[i] || { income: 0, expense: 0, count: 0 }
+                    const net = data.income - data.expense
+                    return [
+                        MONTHS[i].slice(0, 3),
+                        data.income > 0 ? pdfCurrency(data.income) : '—',
+                        data.expense > 0 ? pdfCurrency(data.expense) : '—',
+                        data.count > 0 ? pdfCurrency(net) : '—',
+                        data.count || '—',
+                    ]
+                })
+                : null
+
+            const ytdMonthlyFoot = ytdData ? [
+                'Total',
+                pdfCurrency(ytdData.ytdIncome),
+                pdfCurrency(ytdData.ytdExpense),
+                pdfCurrency(ytdData.ytdBalance),
+                String(ytdData.ytdTxCount ?? '—'),
+            ] : null
+
+            const ytdTopCategories = ytdData?.topCategories?.length
+                ? ytdData.topCategories.map(cat => ({
+                    label: sanitizePdfText(cat.name),
+                    value: pdfCurrency(cat.amount),
+                    sub: ytdData.ytdExpense > 0 ? `${Math.round((cat.amount / ytdData.ytdExpense) * 100)}%` : undefined,
+                }))
+                : null
+
+            const activeDebts = (debts || []).filter(d => d.status === 'active' && d.amount_paid < d.total_amount)
+
+            const dailyData = {}
+            active.filter(e => e.type === 'expense').forEach(e => {
+                const day = new Date(e.date).getDate()
+                dailyData[day] = (dailyData[day] || 0) + convert(e.amount, e.currency)
+            })
+            const dailySpendingChart = Array.from({ length: daysInMonth }, (_, i) => ({
+                label: String(i + 1),
+                value: dailyData[i + 1] || 0,
+            }))
+
+            const transactionRows = []
+            const transactionRowMeta = []
+            const txnGroupFill = isLight ? [241, 245, 249] : [10, 10, 10]
+            groupedByDate.forEach(([date, group]) => {
+                transactionRows.push([{
+                    content: sanitizePdfText(date),
+                    colSpan: 5,
+                    styles: { fillColor: txnGroupFill, fontStyle: 'bold', fontSize: 7 },
+                }])
+                transactionRowMeta.push({ isGroup: true })
+                group.items.forEach(e => {
+                    const fromCur = e.currency || 'PHP'
+                    const converted = fromCur !== activeViewCurrency ? toTargetCurrency(e.amount, fromCur, activeViewCurrency) : null
+                    const prefix = e.type === 'income' ? '+' : '-'
+                    const amount = converted !== null
+                        ? `${prefix}${pdfCurrency(converted)} (${prefix}${pdfCurrency(e.amount, fromCur)})`
+                        : `${prefix}${pdfCurrency(e.amount, fromCur)}`
+                    const rawDesc = e.description || '—'
+                    const desc = sanitizePdfText(rawDesc)
+                    const isDebt = /^debt\s*:/i.test(rawDesc)
+                    transactionRows.push([
+                        sanitizePdfText(new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                        e.listOnly ? `${desc} [LIST]` : desc,
+                        sanitizePdfText(e.category?.name || 'Uncategorized'),
+                        sanitizePdfText(e.paymentMethod || 'Cash'),
+                        amount,
+                    ])
+                    transactionRowMeta.push({
+                        type: e.type,
+                        isDebt,
+                        listOnly: !!e.listOnly,
+                    })
+                })
             })
 
-            el.style.width = origWidth
-            el.style.minWidth = origMinWidth
-            el.style.maxWidth = origMaxWidth
-            el.style.overflow = origOverflow
-            scrollEls.forEach((s, i) => { s.style.overflow = ''; s.style.marginLeft = ''; s.style.marginRight = ''; s.style.paddingLeft = ''; s.style.paddingRight = '' })
-
-            const imgData = canvas.toDataURL('image/png')
-            const JsPDF = await loadJsPDF()
-            const pdf = new JsPDF('p', 'mm', 'a4')
-            const pdfW = pdf.internal.pageSize.getWidth()
-            const imgW = canvas.width
-            const imgH = canvas.height
-            const ratio = pdfW / imgW
-            const pdfH = imgH * ratio
-            const pageH = pdf.internal.pageSize.getHeight()
-
-            let pos = 0
-            pdf.addImage(imgData, 'PNG', 0, pos, pdfW, pdfH)
-            let remaining = pdfH - pageH
-            while (remaining > 0) {
-                pos -= pageH
-                pdf.addPage()
-                pdf.addImage(imgData, 'PNG', 0, pos, pdfW, pdfH)
-                remaining -= pageH
-            }
-
-            pdf.save(`Budget_Summary_${MONTHS[month - 1]}_${year}.pdf`)
+            await generateBudgetSummaryPdf({
+                theme: isLight ? 'light' : 'dark',
+                filename: `Budget_Summary_${MONTHS[month - 1]}_${year}.pdf`,
+                monthLabel: MONTHS[month - 1],
+                year,
+                currency: activeViewCurrency,
+                overviewCards: [
+                    { label: 'Total Income', value: pdfCurrency(totalIncome), tone: 'emerald' },
+                    { label: 'Total Expenses', value: pdfCurrency(totalExpenses), tone: 'red' },
+                    { label: 'Net Balance', value: pdfCurrency(balance), tone: balance >= 0 ? 'blue' : 'red' },
+                    { label: 'Budget Used', value: totalBudget > 0 ? `${budgetUsedPct}%` : '—', tone: budgetUsedPct >= 100 ? 'red' : budgetUsedPct >= 80 ? 'amber' : 'emerald' },
+                ],
+                quickStats: [
+                    { label: 'Transactions', value: String(active.length) },
+                    { label: 'Total Budget', value: pdfCurrency(totalBudget) },
+                    { label: 'Daily Average', value: pdfCurrency(dailyAvg) },
+                    { label: 'Remaining', value: pdfCurrency(remainingBudget), tone: remainingBudget >= 0 ? 'emerald' : 'red' },
+                ],
+                expenseChart: catSpending.slice(0, 8).map(c => ({
+                    label: c.name,
+                    value: c.spent,
+                    color: c.color,
+                })),
+                incomeChart: catIncome.slice(0, 8).map(c => ({
+                    label: c.name,
+                    value: c.earned,
+                    color: c.color,
+                })),
+                paymentChart: sortedPayments.map(([method, amount]) => ({
+                    label: method,
+                    value: amount,
+                })),
+                dailySpendingChart,
+                budgetChart: monthlyBudgetData.length > 0
+                    ? monthlyBudgetData.map(cat => ({
+                        label: cat.name,
+                        budget: cat.budget,
+                        spent: cat.spent,
+                        color: cat.color,
+                    }))
+                    : null,
+                ytdMonthlyChart: ytdData?.monthlyBreakdown
+                    ? Array.from({ length: month }, (_, i) => ({
+                        label: MONTHS[i].slice(0, 3),
+                        income: ytdData.monthlyBreakdown[i]?.income || 0,
+                        expense: ytdData.monthlyBreakdown[i]?.expense || 0,
+                    }))
+                    : null,
+                expenseRows,
+                incomeRows,
+                totalExpenses: pdfCurrency(totalExpenses),
+                totalIncome: pdfCurrency(totalIncome),
+                budgetTable,
+                paymentRows,
+                ytdCards,
+                ytdMonthlyRows,
+                ytdMonthlyFoot,
+                ytdTopCategories,
+                debtRows: activeDebts.length ? activeDebts : null,
+                transactionRows: transactionRows.length ? transactionRows : null,
+                transactionRowMeta,
+                transactionFoot: transactionRows.length ? [[
+                    { content: `Net Total (${active.length} transactions)`, colSpan: 4, styles: { fontStyle: 'bold' } },
+                    `${balance >= 0 ? '+' : ''}${pdfCurrency(balance)}`,
+                ]] : null,
+            })
         } catch (err) {
             console.error('PDF generation failed:', err)
             setPdfError('PDF generation failed. Please try again.')
             setTimeout(() => setPdfError(''), 5000)
-            el.style.width = origWidth
-            el.style.minWidth = origMinWidth
-            el.style.maxWidth = origMaxWidth
-            el.style.overflow = origOverflow
-            scrollEls.forEach(s => { s.style.overflow = ''; s.style.marginLeft = ''; s.style.marginRight = ''; s.style.paddingLeft = ''; s.style.paddingRight = '' })
         } finally {
             setDownloading(false)
         }
@@ -6571,6 +6488,7 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
     const rowCls = `flex items-center justify-between py-1.5 text-xs`
     const labelCls = isLight ? 'text-slate-600' : 'text-gray-300'
     const valueCls = `font-semibold ${isLight ? 'text-slate-800' : 'text-gray-100'}`
+    const tableNumCls = `text-right align-top ${isLight ? 'text-slate-700' : 'text-gray-200'}`
 
     return (
         <div className="space-y-4">
@@ -6616,7 +6534,7 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
             )}
 
             {/* Printable Summary */}
-            <AnimateIn delay={100}><div ref={summaryRef} className={`${card} overflow-hidden`}>
+            <AnimateIn delay={100}><div className={`${card} overflow-hidden`}>
                 {/* Header */}
                 <div className={`px-4 sm:px-6 py-4 sm:py-5 border-b border-solid ${isLight ? 'border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50' : 'border-[#1f1f1f] bg-gradient-to-r from-blue-900/10 to-indigo-900/10'}`}>
                     <div className="flex items-center justify-between">
@@ -6813,14 +6731,14 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                             </h4>
                             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
                             <div className="overflow-hidden rounded-lg border border-solid min-w-[500px]" style={{ borderColor: isLight ? '#e2e8f0' : '#1f1f1f' }}>
-                                <table className="w-full text-xs">
+                                <table className="w-full text-xs align-top">
                                     <thead>
                                         <tr className={isLight ? 'bg-slate-50 text-slate-400' : 'bg-[#111] text-gray-500'}>
-                                            <th className="px-3 py-2 text-left font-semibold">Category</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Budget</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Spent</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Remaining</th>
-                                            <th className="px-3 py-2 text-center font-semibold">Status</th>
+                                            <th className="px-3 py-2 text-left font-semibold align-top">Category</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Budget</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Spent</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Remaining</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -6828,7 +6746,7 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                             const sc = statusColor(cat.percentage)
                                             return (
                                                 <tr key={cat._id} className={`${i > 0 ? `border-t border-solid ${isLight ? 'border-slate-50' : 'border-[#1a1a1a]'}` : ''}`}>
-                                                    <td className={`px-3 py-2 ${labelCls}`}>
+                                                    <td className={`px-3 py-2 align-top ${labelCls}`}>
                                                         <div className="flex items-center gap-1.5">
                                                             <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: cat.color + '20' }}>
                                                                 {cat.icon ? <SafeIcon name={cat.icon} cls="text-[8px]" style={{ color: cat.color }} /> : <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.color }} />}
@@ -6836,12 +6754,12 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                                             {cat.name}
                                                         </div>
                                                     </td>
-                                                    <td className={`px-3 py-2 text-right ${valueCls}`}>{formatCurrency(cat.budget)}</td>
-                                                    <td className={`px-3 py-2 text-right ${valueCls}`}>{formatCurrency(cat.spent)}</td>
-                                                    <td className={`px-3 py-2 text-right font-semibold ${cat.remaining >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                    <td className={`px-3 py-2 align-top ${tableNumCls}`}>{formatCurrency(cat.budget)}</td>
+                                                    <td className={`px-3 py-2 align-top ${tableNumCls}`}>{formatCurrency(cat.spent)}</td>
+                                                    <td className={`px-3 py-2 align-top ${tableNumCls}`}>
                                                         {formatCurrency(cat.remaining)}
                                                     </td>
-                                                    <td className="px-3 py-2 text-center">
+                                                    <td className={`px-3 py-2 align-top text-right`}>
                                                         <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${sc.text} ${sc.bg}`}>
                                                             {cat.budget > 0 ? `${cat.percentage}%` : '—'}
                                                         </span>
@@ -6852,11 +6770,11 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                     </tbody>
                                     <tfoot>
                                         <tr className={`border-t-2 border-solid ${isLight ? 'border-slate-200 bg-slate-50' : 'border-[#2B2B2B] bg-[#111]'}`}>
-                                            <td className={`px-3 py-2 font-bold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Total</td>
-                                            <td className={`px-3 py-2 text-right font-bold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{formatCurrency(totalBudget)}</td>
-                                            <td className={`px-3 py-2 text-right font-bold text-red-500`}>{formatCurrency(totalExpenses)}</td>
-                                            <td className={`px-3 py-2 text-right font-bold ${remainingBudget >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyRaw(remainingBudget, activeViewCurrency)}</td>
-                                            <td className="px-3 py-2 text-center">
+                                            <td className={`px-3 py-2 font-bold align-top ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Total</td>
+                                            <td className={`px-3 py-2 align-top ${tableNumCls}`}>{formatCurrency(totalBudget)}</td>
+                                            <td className={`px-3 py-2 align-top ${tableNumCls}`}>{formatCurrency(totalExpenses)}</td>
+                                            <td className={`px-3 py-2 align-top ${tableNumCls}`}>{formatCurrencyRaw(remainingBudget, activeViewCurrency)}</td>
+                                            <td className="px-3 py-2 text-right align-top">
                                                 <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(budgetUsedPct).text} ${statusColor(budgetUsedPct).bg}`}>
                                                     {budgetUsedPct}%
                                                 </span>
@@ -6927,14 +6845,14 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                             {/* Monthly Breakdown Table */}
                             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
                             <div className="overflow-hidden rounded-lg border border-solid min-w-[400px]" style={{ borderColor: isLight ? '#e2e8f0' : '#1f1f1f' }}>
-                                <table className="w-full text-xs">
+                                <table className="w-full text-xs align-top">
                                     <thead>
                                         <tr className={isLight ? 'bg-slate-50 text-slate-400' : 'bg-[#111] text-gray-500'}>
-                                            <th className="px-3 py-2 text-left font-semibold">Month</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Income</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Expenses</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Net</th>
-                                            <th className="px-3 py-2 text-center font-semibold">Txns</th>
+                                            <th className="px-3 py-2 text-left font-semibold align-top">Month</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Income</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Expenses</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Net</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Txns</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -6943,22 +6861,22 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                             const net = data.income - data.expense
                                             return (
                                                 <tr key={i} className={i > 0 ? `border-t border-solid ${isLight ? 'border-slate-50' : 'border-[#1a1a1a]'}` : ''}>
-                                                    <td className={`px-3 py-2 font-medium ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{MONTHS[i].slice(0, 3)}</td>
-                                                    <td className="px-3 py-2 text-right text-emerald-500 font-semibold">{data.income > 0 ? formatCurrencyRaw(data.income, activeViewCurrency) : '—'}</td>
-                                                    <td className="px-3 py-2 text-right text-red-500 font-semibold">{data.expense > 0 ? formatCurrencyRaw(data.expense, activeViewCurrency) : '—'}</td>
-                                                    <td className={`px-3 py-2 text-right font-semibold ${net >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{data.count > 0 ? formatCurrencyRaw(net, activeViewCurrency) : '—'}</td>
-                                                    <td className={`px-3 py-2 text-center ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{data.count || '—'}</td>
+                                                    <td className={`px-3 py-2 font-medium align-top ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{MONTHS[i].slice(0, 3)}</td>
+                                                    <td className={`px-3 py-2 ${tableNumCls}`}>{data.income > 0 ? formatCurrencyRaw(data.income, activeViewCurrency) : '—'}</td>
+                                                    <td className={`px-3 py-2 ${tableNumCls}`}>{data.expense > 0 ? formatCurrencyRaw(data.expense, activeViewCurrency) : '—'}</td>
+                                                    <td className={`px-3 py-2 ${tableNumCls}`}>{data.count > 0 ? formatCurrencyRaw(net, activeViewCurrency) : '—'}</td>
+                                                    <td className={`px-3 py-2 text-right align-top ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{data.count || '—'}</td>
                                                 </tr>
                                             )
                                         })}
                                     </tbody>
                                     <tfoot>
                                         <tr className={`border-t-2 border-solid ${isLight ? 'border-slate-200 bg-slate-50' : 'border-[#2B2B2B] bg-[#111]'}`}>
-                                            <td className={`px-3 py-2 font-bold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Total</td>
-                                            <td className="px-3 py-2 text-right font-bold text-emerald-500">{formatCurrencyRaw(ytdData.ytdIncome, activeViewCurrency)}</td>
-                                            <td className="px-3 py-2 text-right font-bold text-red-500">{formatCurrencyRaw(ytdData.ytdExpense, activeViewCurrency)}</td>
-                                            <td className={`px-3 py-2 text-right font-bold ${ytdData.ytdBalance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyRaw(ytdData.ytdBalance, activeViewCurrency)}</td>
-                                            <td className={`px-3 py-2 text-center font-bold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{ytdData.ytdTxCount}</td>
+                                            <td className={`px-3 py-2 font-bold align-top ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Total</td>
+                                            <td className={`px-3 py-2 ${tableNumCls}`}>{formatCurrencyRaw(ytdData.ytdIncome, activeViewCurrency)}</td>
+                                            <td className={`px-3 py-2 ${tableNumCls}`}>{formatCurrencyRaw(ytdData.ytdExpense, activeViewCurrency)}</td>
+                                            <td className={`px-3 py-2 ${tableNumCls}`}>{formatCurrencyRaw(ytdData.ytdBalance, activeViewCurrency)}</td>
+                                            <td className={`px-3 py-2 text-right align-top ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{ytdData.ytdTxCount}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -7000,14 +6918,14 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                             </h4>
                             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
                             <div className="overflow-hidden rounded-lg border border-solid min-w-[550px]" style={{ borderColor: isLight ? '#e2e8f0' : '#1f1f1f' }}>
-                                <table className="w-full text-xs">
+                                <table className="w-full text-xs align-top">
                                     <thead>
                                         <tr className={isLight ? 'bg-slate-50 text-slate-400' : 'bg-[#111] text-gray-500'}>
-                                            <th className="px-3 py-2 text-left font-semibold">Date</th>
-                                            <th className="px-3 py-2 text-left font-semibold">Description</th>
-                                            <th className="px-3 py-2 text-left font-semibold">Category</th>
-                                            <th className="px-3 py-2 text-left font-semibold">Method</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                                            <th className="px-3 py-2 text-left font-semibold align-top">Date</th>
+                                            <th className="px-3 py-2 text-left font-semibold align-top">Description</th>
+                                            <th className="px-3 py-2 text-left font-semibold align-top">Category</th>
+                                            <th className="px-3 py-2 text-left font-semibold align-top">Method</th>
+                                            <th className="px-3 py-2 text-right font-semibold align-top">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -7026,7 +6944,7 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                             return (
                                             <React.Fragment key={date}>
                                                 <tr className={isLight ? 'bg-slate-50/50' : 'bg-[#0a0a0a]'}>
-                                                    <td colSpan={3} className={`px-3 py-1.5`}>
+                                                    <td colSpan={3} className="px-3 py-1.5 align-top">
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{date}</span>
                                                             {grpCurrencyEntries.map(([code, v]) => (
@@ -7038,7 +6956,7 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                                             ))}
                                                         </div>
                                                     </td>
-                                                    <td className="px-3 py-1.5 text-right" colSpan={2}>
+                                                    <td className="px-3 py-1.5 text-right align-top" colSpan={2}>
                                                         <div className="flex items-center justify-end gap-2">
                                                             {grpIncome > 0 && <span className="text-[10px] font-semibold text-emerald-500">+{formatCurrencyRaw(grpIncome, activeViewCurrency)}</span>}
                                                             {grpExpense > 0 && <span className="text-[10px] font-semibold text-red-500">-{formatCurrencyRaw(grpExpense, activeViewCurrency)}</span>}
@@ -7050,14 +6968,14 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                                     const converted = fromCur !== activeViewCurrency ? toTargetCurrency(e.amount, fromCur, activeViewCurrency) : null
                                                     return (
                                                     <tr key={e._id} className={`border-t border-solid ${isLight ? 'border-slate-50' : 'border-[#1a1a1a]'} ${e.listOnly ? 'opacity-40' : ''}`}>
-                                                        <td className={`px-3 py-1.5 whitespace-nowrap ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                        <td className={`px-3 py-1.5 whitespace-nowrap align-top ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
                                                             {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                         </td>
-                                                        <td className={`px-3 py-1.5 ${e.listOnly ? 'line-through' : ''} ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
+                                                        <td className={`px-3 py-1.5 align-top ${e.listOnly ? 'line-through' : ''} ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
                                                             {e.description}
                                                             {e.listOnly && <span className={`ml-1 text-[10px] font-bold px-1 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-[#1a1a1a] text-gray-500'}`}>LIST</span>}
                                                         </td>
-                                                        <td className={`px-3 py-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                        <td className={`px-3 py-1.5 align-top ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                                                             <div className="flex items-center gap-1">
                                                                 <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: (e.category?.color || '#94a3b8') + '20' }}>
                                                                     {e.category?.icon ? <SafeIcon name={e.category.icon} cls="text-[8px]" style={{ color: e.category.color }} /> : <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: e.category?.color || '#94a3b8' }} />}
@@ -7065,11 +6983,11 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                                                 {e.category?.name || 'Uncategorized'}
                                                             </div>
                                                         </td>
-                                                        <td className={`px-3 py-1.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{e.paymentMethod}</td>
-                                                        <td className={`px-3 py-1.5 text-right whitespace-nowrap`}>
+                                                        <td className={`px-3 py-1.5 align-top ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{e.paymentMethod}</td>
+                                                        <td className={`px-3 py-1.5 text-right align-top whitespace-nowrap ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
                                                             {converted !== null ? (
                                                                 <>
-                                                                    <span className={`text-xs font-semibold ${e.listOnly ? 'line-through' : ''} ${e.type === 'income' ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                    <span className={`text-xs ${e.listOnly ? 'line-through' : ''}`}>
                                                                         {e.type === 'income' ? '+' : '-'}{formatCurrencyRaw(converted, activeViewCurrency)}
                                                                     </span>
                                                                     <span className={`block text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
@@ -7077,7 +6995,7 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                                                     </span>
                                                                 </>
                                                             ) : (
-                                                                <span className={`text-xs font-semibold ${e.listOnly ? 'line-through' : ''} ${e.type === 'income' ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                <span className={`text-xs ${e.listOnly ? 'line-through' : ''}`}>
                                                                     {e.type === 'income' ? '+' : '-'}{formatCurrencyRaw(e.amount, fromCur)}
                                                                 </span>
                                                             )}
@@ -7091,10 +7009,10 @@ const SummaryTab = React.memo(({ dashboard, expenses, categories, monthlyBudgetD
                                     </tbody>
                                     <tfoot>
                                         <tr className={`border-t-2 border-solid ${isLight ? 'border-slate-200 bg-slate-50' : 'border-[#2B2B2B] bg-[#111]'}`}>
-                                            <td colSpan={4} className={`px-3 py-2 font-bold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
+                                            <td colSpan={4} className={`px-3 py-2 font-bold align-top ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
                                                 Net Total ({active.length} transactions)
                                             </td>
-                                            <td className={`px-3 py-2 text-right font-bold ${balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                            <td className={`px-3 py-2 text-right align-top ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
                                                 {balance >= 0 ? '+' : ''}{formatCurrencyRaw(balance, activeViewCurrency)}
                                             </td>
                                         </tr>
@@ -7460,39 +7378,124 @@ const BUDGET_TEMPLATES = [
     {
         id: 'default',
         name: 'Default',
-        description: 'Clean and balanced design with subtle borders and glassmorphism',
-        preview: { card: 'rounded-xl border', accent: 'blue', density: 'normal', radius: 'xl' },
-        colors: { primary: '#3b82f6', surface: '#ffffff', border: '#e2e8f0' },
+        description: 'Balanced layout with standard width, pill tabs, and blue accents',
+        layout: { density: 'Balanced', width: 'Wide', tabs: 'Pill', spacing: 'Standard' },
+        style: { accent: 'Blue', surface: 'Bordered cards' },
+        preview: { accent: 'blue', tabLayout: 'pill' },
     },
     {
         id: 'compact',
         name: 'Compact',
-        description: 'Denser layout with smaller spacing — fits more data on screen',
-        preview: { card: 'rounded-lg border', accent: 'slate', density: 'tight', radius: 'lg' },
-        colors: { primary: '#475569', surface: '#f8fafc', border: '#e2e8f0' },
+        description: 'Dense spacing, 2-column stats on mobile, segmented tabs — more data on screen',
+        layout: { density: 'Dense', width: 'Wide', tabs: 'Segmented', spacing: 'Tight' },
+        style: { accent: 'Slate', surface: 'Flat borders' },
+        preview: { accent: 'slate', tabLayout: 'segment' },
     },
     {
         id: 'vibrant',
         name: 'Vibrant',
-        description: 'Bold gradients and vivid accent colors for a modern feel',
-        preview: { card: 'rounded-2xl shadow-md', accent: 'violet', density: 'normal', radius: '2xl' },
-        colors: { primary: '#8b5cf6', surface: '#faf5ff', border: '#ddd6fe' },
+        description: 'Spacious padding, narrower content, large pill tabs, bold gradients',
+        layout: { density: 'Spacious', width: 'Focused', tabs: 'Large pills', spacing: 'Generous' },
+        style: { accent: 'Violet', surface: 'Shadow cards' },
+        preview: { accent: 'violet', tabLayout: 'pill-lg' },
     },
     {
         id: 'minimal',
         name: 'Minimal',
-        description: 'Ultra-clean with no borders — just subtle shadows and whitespace',
-        preview: { card: 'rounded-xl shadow-sm', accent: 'emerald', density: 'relaxed', radius: 'xl' },
-        colors: { primary: '#10b981', surface: '#f0fdf4', border: 'transparent' },
+        description: 'Narrow layout, underline tabs (text only), relaxed whitespace',
+        layout: { density: 'Relaxed', width: 'Narrow', tabs: 'Underline', spacing: 'Airy' },
+        style: { accent: 'Emerald', surface: 'Shadow only' },
+        preview: { accent: 'emerald', tabLayout: 'underline' },
     },
     {
         id: 'glass',
         name: 'Glassmorphism',
-        description: 'Frosted glass effect with translucent cards and soft blur',
-        preview: { card: 'rounded-2xl backdrop-blur', accent: 'cyan', density: 'normal', radius: '2xl' },
-        colors: { primary: '#06b6d4', surface: '#ecfeff', border: '#a5f3fc' },
+        description: 'Wide layout with frosted segment tabs and translucent cards',
+        layout: { density: 'Balanced', width: 'Wide', tabs: 'Frosted segment', spacing: 'Standard' },
+        style: { accent: 'Cyan', surface: 'Glass blur' },
+        preview: { accent: 'cyan', tabLayout: 'segment-glass' },
     },
 ]
+
+const TEMPLATE_ACCENT_COLORS = {
+    blue: { bg: '#3b82f6', light: '#eff6ff', border: '#bfdbfe', muted: '#93c5fd' },
+    slate: { bg: '#475569', light: '#f8fafc', border: '#cbd5e1', muted: '#94a3b8' },
+    violet: { bg: '#8b5cf6', light: '#f5f3ff', border: '#c4b5fd', muted: '#a78bfa' },
+    emerald: { bg: '#10b981', light: '#ecfdf5', border: '#a7f3d0', muted: '#6ee7b7' },
+    cyan: { bg: '#06b6d4', light: '#ecfeff', border: '#a5f3fc', muted: '#67e8f9' },
+}
+
+function TemplateLayoutPreview({ template, isLight }) {
+    const accent = TEMPLATE_ACCENT_COLORS[template.preview.accent] || TEMPLATE_ACCENT_COLORS.blue
+    const shellBg = isLight ? '#f1f5f9' : '#111'
+    const cardBg = isLight ? '#ffffff' : '#0e0e0e'
+    const tabLayout = template.preview.tabLayout
+
+    const renderTabs = () => {
+        if (tabLayout === 'segment' || tabLayout === 'segment-glass') {
+            const segBg = tabLayout === 'segment-glass'
+                ? (isLight ? 'rgba(255,255,255,0.5)' : 'rgba(17,17,17,0.6)')
+                : (isLight ? '#e2e8f0' : '#0a0a0a')
+            return (
+                <div className="flex gap-0.5 p-0.5 rounded-md" style={{ backgroundColor: segBg, border: tabLayout === 'segment-glass' ? `1px solid ${isLight ? '#e2e8f0' : '#333'}` : 'none' }}>
+                    <div className="flex-1 h-3 rounded-sm" style={{ backgroundColor: accent.bg }} />
+                    <div className="flex-1 h-3 rounded-sm opacity-40" style={{ backgroundColor: isLight ? '#cbd5e1' : '#333' }} />
+                    <div className="flex-1 h-3 rounded-sm opacity-40" style={{ backgroundColor: isLight ? '#cbd5e1' : '#333' }} />
+                </div>
+            )
+        }
+        if (tabLayout === 'underline') {
+            return (
+                <div className="flex gap-3 border-b" style={{ borderColor: isLight ? '#e2e8f0' : '#222' }}>
+                    <div className="h-3 w-8 border-b-2" style={{ borderColor: accent.bg, marginBottom: -1 }} />
+                    <div className="h-3 w-6 opacity-30 rounded-sm" style={{ backgroundColor: isLight ? '#cbd5e1' : '#333' }} />
+                    <div className="h-3 w-7 opacity-30 rounded-sm" style={{ backgroundColor: isLight ? '#cbd5e1' : '#333' }} />
+                </div>
+            )
+        }
+        const pillH = tabLayout === 'pill-lg' ? 'h-3.5' : 'h-3'
+        const pillRadius = tabLayout === 'pill-lg' ? 'rounded-lg' : 'rounded-md'
+        return (
+            <div className="flex gap-1">
+                <div className={`${pillH} w-10 ${pillRadius}`} style={{ backgroundColor: accent.bg }} />
+                <div className={`${pillH} w-8 ${pillRadius} opacity-30`} style={{ backgroundColor: isLight ? '#cbd5e1' : '#333' }} />
+                <div className={`${pillH} w-9 ${pillRadius} opacity-30`} style={{ backgroundColor: isLight ? '#cbd5e1' : '#333' }} />
+            </div>
+        )
+    }
+
+    const isCompact = template.id === 'compact'
+    const isVibrant = template.id === 'vibrant'
+    const isMinimal = template.id === 'minimal'
+    const cardCount = isCompact ? 4 : isVibrant ? 2 : 3
+    const cardH = isCompact ? 'h-7' : isVibrant ? 'h-12' : 'h-9'
+    const gridCols = isCompact ? 'grid-cols-2' : isVibrant ? 'grid-cols-1' : 'grid-cols-3'
+
+    return (
+        <div className="rounded-lg border border-solid overflow-hidden p-2" style={{ backgroundColor: shellBg, borderColor: isLight ? '#e2e8f0' : '#1f1f1f' }}>
+            <div className="mb-2">{renderTabs()}</div>
+            <div className={`grid ${gridCols} gap-1`}>
+                {[...Array(cardCount)].map((_, i) => (
+                    <div
+                        key={i}
+                        className={`${cardH} rounded-md border border-solid`}
+                        style={{
+                            backgroundColor: cardBg,
+                            borderColor: isMinimal ? 'transparent' : (isLight ? accent.border : '#2B2B2B'),
+                            boxShadow: isMinimal ? (isLight ? '0 1px 2px rgba(0,0,0,0.05)' : 'none') : undefined,
+                            opacity: tabLayout === 'segment-glass' ? 0.85 : 1,
+                        }}
+                    >
+                        <div className="p-1">
+                            <div className="h-1 w-4 rounded-full mb-0.5" style={{ backgroundColor: accent.muted, opacity: 0.5 }} />
+                            <div className="h-1.5 w-6 rounded-full" style={{ backgroundColor: accent.bg, opacity: 0.7 }} />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
 
 const SettingsTab = React.memo(({ isLight, card, inputCls, selectCls, btnPrimary, btnSecondary, dispatch, categories, expenses, savedRates, liveRates, savedBaseCurrency, exchangeRates, viewCurrency, setViewCurrency, activeViewCurrency, formatCurrencyRaw, budgetSettings, PAYMENT_METHODS, month, year, templateStyles, dashboard, monthlyBudgetData, allTabs, allocatedPool, autoSavings, totalIncomeGlobal }) => {
     const [allocEdits, setAllocEdits] = useState({})
@@ -7584,7 +7587,7 @@ const SettingsTab = React.memo(({ isLight, card, inputCls, selectCls, btnPrimary
         setSavingTemplate(true)
         await saveSettings({ template: templateId })
         setSavingTemplate(false)
-        notify(`Template changed to "${BUDGET_TEMPLATES.find(t => t.id === templateId)?.name}"`)
+        notify(`Layout & style changed to "${BUDGET_TEMPLATES.find(t => t.id === templateId)?.name}"`)
     }
 
     useEffect(() => {
@@ -7680,28 +7683,21 @@ const SettingsTab = React.memo(({ isLight, card, inputCls, selectCls, btnPrimary
                 </div>
             )}
 
-            {/* ─── Template Design ─── */}
+            {/* ─── Layout & Style Template ─── */}
             <AnimateIn delay={0}><div className={cardP}>
                 <div className="flex items-center gap-2.5 mb-4">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'bg-fuchsia-50' : 'bg-fuchsia-900/20'}`}>
                         <FontAwesomeIcon icon={faEye} className={`text-sm ${isLight ? 'text-fuchsia-500' : 'text-fuchsia-400'}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Template Design</h3>
-                        <p className={descCls}>Choose a visual style for your budget interface</p>
+                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Layout & Style</h3>
+                        <p className={descCls}>Each template changes spacing, tab layout, content width, and colors across the budget app</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {BUDGET_TEMPLATES.map(template => {
                         const isActive = selectedTemplate === template.id
-                        const accentColors = {
-                            blue: { bg: '#3b82f6', light: '#eff6ff', border: '#bfdbfe' },
-                            slate: { bg: '#475569', light: '#f8fafc', border: '#cbd5e1' },
-                            violet: { bg: '#8b5cf6', light: '#f5f3ff', border: '#c4b5fd' },
-                            emerald: { bg: '#10b981', light: '#ecfdf5', border: '#a7f3d0' },
-                            cyan: { bg: '#06b6d4', light: '#ecfeff', border: '#a5f3fc' },
-                        }
-                        const accent = accentColors[template.preview.accent] || accentColors.blue
+                        const accent = TEMPLATE_ACCENT_COLORS[template.preview.accent] || TEMPLATE_ACCENT_COLORS.blue
                         return (
                             <button
                                 key={template.id}
@@ -7718,35 +7714,30 @@ const SettingsTab = React.memo(({ isLight, card, inputCls, selectCls, btnPrimary
                                         <FontAwesomeIcon icon={faCheck} className="text-[8px] text-white" />
                                     </div>
                                 )}
-                                {/* Mini preview */}
-                                <div className={`mb-3 p-2.5 rounded-lg border border-solid overflow-hidden ${isLight ? 'bg-slate-50 border-slate-100' : 'bg-[#111] border-[#1f1f1f]'}`}>
-                                    <div className="space-y-1.5">
-                                        <div className={`h-2 rounded-full`} style={{ width: '75%', backgroundColor: accent.bg, opacity: 0.8 }} />
-                                        <div className="flex gap-1.5">
-                                            <div className={`flex-1 h-8 rounded-${template.preview.radius === '2xl' ? 'xl' : template.preview.radius === 'lg' ? 'md' : 'lg'}`} style={{ backgroundColor: accent.light, border: `1px solid ${accent.border}` }}>
-                                                <div className="p-1.5">
-                                                    <div className="h-1 w-6 rounded-full" style={{ backgroundColor: accent.bg, opacity: 0.3 }} />
-                                                    <div className="h-1.5 w-10 rounded-full mt-1" style={{ backgroundColor: accent.bg, opacity: 0.6 }} />
-                                                </div>
-                                            </div>
-                                            <div className={`flex-1 h-8 rounded-${template.preview.radius === '2xl' ? 'xl' : template.preview.radius === 'lg' ? 'md' : 'lg'}`} style={{ backgroundColor: accent.light, border: `1px solid ${accent.border}` }}>
-                                                <div className="p-1.5">
-                                                    <div className="h-1 w-8 rounded-full" style={{ backgroundColor: accent.bg, opacity: 0.3 }} />
-                                                    <div className="h-1.5 w-6 rounded-full mt-1" style={{ backgroundColor: accent.bg, opacity: 0.6 }} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className={`h-1.5 rounded-full`} style={{ width: '50%', backgroundColor: accent.bg, opacity: 0.4 }} />
-                                    </div>
+                                <div className="mb-3">
+                                    <TemplateLayoutPreview template={template} isLight={isLight} />
                                 </div>
-                                {/* Info */}
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-2 mb-1.5">
                                     <h4 className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{template.name}</h4>
                                     {template.id === 'default' && (
                                         <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-[#1f1f1f] text-gray-500'}`}>Default</span>
                                     )}
                                 </div>
-                                <p className={`text-[10px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{template.description}</p>
+                                <p className={`text-[10px] leading-relaxed mb-2.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{template.description}</p>
+                                <div className="space-y-1.5">
+                                    <div className="flex flex-wrap gap-1">
+                                        <span className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-[#1a1a1a] text-gray-500'}`}>Layout</span>
+                                        {Object.values(template.layout).map((tag, i) => (
+                                            <span key={i} className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-900/20 text-blue-400'}`}>{tag}</span>
+                                        ))}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1">
+                                        <span className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-[#1a1a1a] text-gray-500'}`}>Style</span>
+                                        {Object.values(template.style).map((tag, i) => (
+                                            <span key={i} className="text-[9px] font-medium px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: i === 0 ? accent.bg : (isLight ? '#e2e8f0' : '#333'), color: i === 0 ? '#fff' : (isLight ? '#64748b' : '#9ca3af') }}>{tag}</span>
+                                        ))}
+                                    </div>
+                                </div>
                             </button>
                         )
                     })}
@@ -7754,7 +7745,7 @@ const SettingsTab = React.memo(({ isLight, card, inputCls, selectCls, btnPrimary
                 {selectedTemplate !== 'default' && (
                     <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${isLight ? 'bg-fuchsia-50 text-fuchsia-600' : 'bg-fuchsia-900/10 text-fuchsia-400'}`}>
                         <FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" />
-                        <span>Active template: <strong>{BUDGET_TEMPLATES.find(t => t.id === selectedTemplate)?.name}</strong></span>
+                        <span>Active: <strong>{BUDGET_TEMPLATES.find(t => t.id === selectedTemplate)?.name}</strong> — layout and style applied app-wide</span>
                         <button onClick={() => handleSelectTemplate('default')} className={`ml-auto text-[10px] font-medium px-2 py-1 rounded-md transition-all ${isLight ? 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200' : 'bg-[#1a1a1a] hover:bg-[#222] text-gray-300 border border-[#333]'}`}>
                             Reset to Default
                         </button>

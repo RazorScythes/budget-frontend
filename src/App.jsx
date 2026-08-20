@@ -7,6 +7,9 @@ import { dark, light } from './style'
 import NewLogin from './components/NewLogin'
 import CreateAccount from './components/CreateAccount'
 import ForgotPassword from './components/ForgotPassword'
+import ResetPassword from './components/ResetPassword'
+import VerifyEmail from './components/auth/VerifyEmail'
+import VerifyEmailResult from './components/auth/VerifyEmailResult'
 import Budget from './components/Pages/Budget'
 import Navbar from './components/Custom/Navbar'
 import './index.css'
@@ -23,7 +26,9 @@ const ProtectedLayout = ({ user, theme, setTheme, setUser }) => {
     return (
         <>
             <Navbar theme={theme} setTheme={setTheme} setUser={setUser} />
-            <Outlet />
+            <main className="min-h-[calc(100dvh-4rem)] w-full">
+                <Outlet />
+            </main>
         </>
     )
 }
@@ -36,6 +41,7 @@ const AppRoutes = () => {
 
     useEffect(() => {
         localStorage.setItem('theme', theme)
+        document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark')
     }, [theme])
 
     useEffect(() => {
@@ -44,11 +50,17 @@ const AppRoutes = () => {
     }, [auth.data])
 
     return (
-        <div data-theme={theme === 'light' ? 'light' : 'dark'} className={`w-full ${theme === 'light' ? light.background : dark.background} ${theme === 'light' ? light.color : dark.color} text-sm`}>
+        <div data-theme={theme === 'light' ? 'light' : 'dark'} className={`min-h-[100dvh] w-full ${theme === 'light' ? light.background : dark.background} ${theme === 'light' ? light.color : dark.color} text-sm`}>
             <Routes>
                 <Route path="/login" element={<NewLogin />} />
                 <Route path="/register" element={<CreateAccount setUser={setUser} />} />
-                <Route path="/forgot_password" element={<ForgotPassword setUser={setUser} />} />
+                <Route path="/forgot_password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/verify-email/success" element={<VerifyEmailResult status="success" />} />
+                <Route path="/verify-email/verified" element={<VerifyEmailResult status="verified" />} />
+                <Route path="/verify-email/failed" element={<VerifyEmailResult status="failed" />} />
+                <Route path="/verify-email/expired" element={<VerifyEmailResult status="expired" />} />
                 <Route element={<ProtectedLayout user={user} theme={theme} setTheme={setTheme} setUser={setUser} />}>
                     <Route path="/budget" element={<Budget user={user} theme={theme} />} />
                 </Route>

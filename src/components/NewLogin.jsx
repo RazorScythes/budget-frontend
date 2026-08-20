@@ -90,35 +90,53 @@ const NewLogin = () => {
     useEffect(() => {
         document.title = "Login"
 
-        const initialize = async () => {
-            if (localStorage.getItem('credentials') && !user) {
-                const decrypt = await decryptData(localStorage.getItem('credentials'));
-                const parse = JSON.parse(decrypt);
-
+        const loadCredentials = async () => {
+            if (!localStorage.getItem('credentials')) return
+            try {
+                const decrypt = await decryptData(localStorage.getItem('credentials'))
+                const parse = JSON.parse(decrypt)
                 setForm({
                     username: parse?.username ?? '',
                     password: parse?.password ?? ''
                 })
-                setSave(parse?.save ?? false)
-            }
-
-            if (!user) return
-
-            if (save) {
-                if (form.username && form.password) {
-                    const encrypt = await encryptData(JSON.stringify({ username: form.username, password: form.password, save: save }))
-                    localStorage.setItem('credentials', encrypt)
-                }
-            }
-            else {
+                setSave(!!parse?.save)
+            } catch {
                 localStorage.removeItem('credentials')
             }
-
-            navigate(`/budget`)
         }
 
-        initialize()
-    }, [user, localStorage.getItem('credentials')])
+        loadCredentials()
+    }, [])
+
+    useEffect(() => {
+        if (user) {
+            navigate('/budget')
+        }
+    }, [user])
+
+    useEffect(() => {
+        if (!auth.data?.token) return
+
+        const persistAndNavigate = async () => {
+            if (save && form.username && form.password) {
+                try {
+                    const encrypt = await encryptData(JSON.stringify({
+                        username: form.username,
+                        password: form.password,
+                        save: true
+                    }))
+                    localStorage.setItem('credentials', encrypt)
+                } catch {
+                    localStorage.removeItem('credentials')
+                }
+            } else {
+                localStorage.removeItem('credentials')
+            }
+            navigate('/budget')
+        }
+
+        persistAndNavigate()
+    }, [auth.data?.token])
 
     useEffect(() => {
         if (auth.error) {
@@ -162,17 +180,6 @@ const NewLogin = () => {
                     </div>
 
                     <div className="bg-[#141414] border border-[#252525] rounded-2xl p-7 shadow-2xl shadow-black/40">
-                        {auth.error && (
-                            <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                                <p className="text-red-400 text-sm font-medium">
-                                    {auth.error?.message || 'Unknown username or password'}
-                                </p>
-                                {auth.error?.reason && (
-                                    <p className="text-red-400 text-sm font-medium mt-1">Reason: {auth.error.reason}</p>
-                                )}
-                            </div>
-                        )}
-
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
@@ -238,6 +245,17 @@ const NewLogin = () => {
                                     Forgot password?
                                 </Link>
                             </div>
+
+                            {auth.error && (
+                                <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                                    <p className="text-red-400 text-sm font-medium">
+                                        {auth.error?.message || 'Unknown username or password'}
+                                    </p>
+                                    {auth.error?.reason && (
+                                        <p className="text-red-400 text-sm font-medium mt-1">Reason: {auth.error.reason}</p>
+                                    )}
+                                </div>
+                            )}
 
                             <button
                                 type="submit"

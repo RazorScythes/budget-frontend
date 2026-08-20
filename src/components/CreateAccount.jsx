@@ -43,7 +43,9 @@ const CreateAccount = ({ path, setUser }) => {
     const passwordChecks = {
         length: form.password.length >= 8,
         uppercase: /[A-Z]/.test(form.password),
+        lowercase: /[a-z]/.test(form.password),
         number: /[0-9]/.test(form.password),
+        special: /[!@#$%^&*(),.?":{}|<>_\-+=[\]\\;/'`~]/.test(form.password),
     }
 
     const validate = () => {
@@ -51,13 +53,18 @@ const CreateAccount = ({ path, setUser }) => {
 
         if (!form.username.trim()) newErrors.username = 'Username is required'
         else if (form.username.length < 3) newErrors.username = 'At least 3 characters'
+        else if (form.username.length > 24) newErrors.username = 'Maximum 24 characters'
         else if (!/^[a-zA-Z0-9_]+$/.test(form.username)) newErrors.username = 'Letters, numbers, underscores only'
+        else if (/^[0-9_]+$/.test(form.username)) newErrors.username = 'Must include at least one letter'
 
         if (!form.email.trim()) newErrors.email = 'Email is required'
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = 'Invalid email format'
+        else if (form.email.length > 254) newErrors.email = 'Email is too long'
 
         if (!form.password) newErrors.password = 'Password is required'
-        else if (!passwordChecks.length || !passwordChecks.uppercase || !passwordChecks.number) newErrors.password = 'Password does not meet requirements'
+        else if (!passwordChecks.length || !passwordChecks.uppercase || !passwordChecks.lowercase || !passwordChecks.number || !passwordChecks.special) {
+            newErrors.password = 'Password does not meet requirements'
+        }
 
         if (!form.confirmPassword) newErrors.confirmPassword = 'Please confirm your password'
         else if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Passwords do not match'
@@ -219,7 +226,9 @@ const CreateAccount = ({ path, setUser }) => {
                                     <div className="mt-2.5 flex flex-col gap-1">
                                         <PasswordCheck passed={passwordChecks.length} label="At least 8 characters" />
                                         <PasswordCheck passed={passwordChecks.uppercase} label="One uppercase letter" />
+                                        <PasswordCheck passed={passwordChecks.lowercase} label="One lowercase letter" />
                                         <PasswordCheck passed={passwordChecks.number} label="One number" />
+                                        <PasswordCheck passed={passwordChecks.special} label="One special character" />
                                     </div>
                                 )}
                                 {errors.password && !form.password && <p className="mt-1.5 text-xs text-red-400">{errors.password}</p>}
