@@ -26,7 +26,7 @@ const ProtectedLayout = ({ user, theme, setTheme, setUser }) => {
     return (
         <>
             <Navbar theme={theme} setTheme={setTheme} setUser={setUser} />
-            <main className="min-h-[calc(100dvh-4rem)] w-full">
+            <main className="min-h-[calc(100dvh-4rem)] w-full min-w-0 overflow-x-clip">
                 <Outlet />
             </main>
         </>
@@ -50,7 +50,7 @@ const AppRoutes = () => {
     }, [auth.data])
 
     return (
-        <div data-theme={theme === 'light' ? 'light' : 'dark'} className={`min-h-[100dvh] w-full ${theme === 'light' ? light.background : dark.background} ${theme === 'light' ? light.color : dark.color} text-sm`}>
+        <div data-theme={theme === 'light' ? 'light' : 'dark'} className={`min-h-[100dvh] w-full min-w-0 overflow-x-clip ${theme === 'light' ? light.background : dark.background} ${theme === 'light' ? light.color : dark.color} text-sm`}>
             <Routes>
                 <Route path="/login" element={<NewLogin />} />
                 <Route path="/register" element={<CreateAccount setUser={setUser} />} />

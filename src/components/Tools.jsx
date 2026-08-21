@@ -1,10 +1,11 @@
 const breakpoints = {
     xs: 480,
     ss: 620,
-    sm: 768,
-    md: 1060,
-    lg: 1200,
-    xl: 1700,
+    sm: 640,
+    md: 768,
+    lg: 1024,
+    xl: 1280,
+    "2xl": 1536,
 };
 
 export const useScreenSize = () => {

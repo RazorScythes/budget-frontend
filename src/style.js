@@ -2,16 +2,16 @@ import { text } from "@fortawesome/fontawesome-svg-core";
 import { Link } from "react-router-dom";
 
 const styles = {
-    boxWidth            : "xl:max-w-[1350px] w-full",
-    boxWidthEx          : "xl:max-w-[1550px] w-full",
+    boxWidth            : "xl:max-w-[1350px] w-full min-w-0",
+    boxWidthEx          : "xl:max-w-[1550px] w-full min-w-0",
     heading2            : "font-poppins font-semibold xs:text-[48px] text-[40px] text-white xs:leading-[76.8px] leading-[66.8px] w-full",
     paragraph           : "font-poppins font-normal text-dimWhite text-[18px] leading-[30.8px]",
 
-    flexCenter          : "flex justify-center items-center",
-    flexStart           : "flex justify-center items-start",
-    flexLeft            : "flex  items-start",
+    flexCenter          : "flex justify-center items-center min-w-0 w-full",
+    flexStart           : "flex justify-center items-start min-w-0 w-full",
+    flexLeft            : "flex items-start min-w-0 w-full",
 
-    paddingX            : "sm:px-16 px-6",
+    paddingX            : "px-3 sm:px-6 md:px-10 lg:px-16",
     paddingY            : "sm:py-16 py-6",
     padding             : "sm:px-16 px-6 sm:py-12 py-4",
 
