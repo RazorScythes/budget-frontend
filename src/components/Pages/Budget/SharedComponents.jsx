@@ -97,3 +97,30 @@ export const SafeIcon = ({ name, cls, style }) => {
     try { return <FontAwesomeIcon icon={['fas', name]} className={cls} style={style} /> }
     catch { return <FontAwesomeIcon icon={faCogs} className={`${cls} opacity-20`} style={style} /> }
 }
+
+/** Pill sub-tab bar — same design as Settings (rounded container, template-aware active state). */
+export const SubTabBar = ({ tabs, activeId, onChange, isLight, templateStyles, renderBadge }) => (
+    <div className={`flex flex-wrap gap-1 p-1 rounded-xl border border-solid ${
+        isLight ? 'bg-slate-100/80 border-slate-200' : 'bg-[#111] border-[#2B2B2B]'
+    }`}>
+        {tabs.map(tab => {
+            const active = activeId === tab.id
+            return (
+                <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => onChange(tab.id)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                        active
+                            ? (templateStyles?.tabActive || (isLight ? 'bg-white text-slate-800 shadow-sm' : 'bg-[#1a1a1a] text-white'))
+                            : (isLight ? 'text-slate-500 hover:text-slate-700 hover:bg-white/60' : 'text-gray-500 hover:text-gray-300 hover:bg-[#1a1a1a]/60')
+                    }`}
+                >
+                    {tab.icon && <FontAwesomeIcon icon={tab.icon} className="text-[10px]" />}
+                    {tab.label}
+                    {renderBadge?.(tab, active)}
+                </button>
+            )
+        })}
+    </div>
+)

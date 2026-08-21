@@ -42,6 +42,9 @@ export const forgotPassword = (formData) => endpoint.post('/user/forgotPassword'
 export const resetPassword = (formData) => endpoint.post('/user/resetPassword', formData)
 export const verifyEmail = (formData) => endpoint.post('/user/verifyEmail', formData)
 export const sendVerificationEmail = () => endpoint.post('/user/sendVerificationEmail')
+export const getExtensionClient = () => endpoint.get('/user/extension-client')
+export const createExtensionClient = () => endpoint.post('/user/extension-client')
+export const revokeExtensionClient = () => endpoint.delete('/user/extension-client')
 
 /*
     BUDGET
@@ -107,5 +110,8 @@ export const createBudgetShareLink = (formData) => endpoint.post('/budget/share-
 export const refreshBudgetShareLink = (formData) => endpoint.post('/budget/share-link/refresh', formData)
 export const acceptBudgetInvite = (formData) => endpoint.post('/budget/share-link/accept', formData)
 export const getBudgetAuditLogs = (params) => endpoint.get('/budget/audit-logs', { params })
+export const transferSavingsAccount = (formData) => endpoint.post('/budget/savings/transfer', formData)
+export const exportBudgetBackup = () => endpoint.get('/budget/backup/export')
+export const importBudgetBackup = (formData) => endpoint.post('/budget/backup/import', formData)
 
 export default endpoint

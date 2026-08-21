@@ -1,4 +1,3 @@
-import { text } from "@fortawesome/fontawesome-svg-core";
 import { Link } from "react-router-dom";
 
 const styles = {
