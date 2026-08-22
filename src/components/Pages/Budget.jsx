@@ -1290,7 +1290,7 @@ const Budget = ({ user, theme }) => {
                 @keyframes countPulse { 0% { transform: scale(0.95); opacity: 0.6; } 100% { transform: scale(1); opacity: 1; } }
             `}</style>
             <div className={`${styles.paddingX} ${styles.flexCenter}`}>
-                <div className={templateStyles.contentWidthCls}>
+                <div className={`${templateStyles.contentWidthCls} min-w-0`}>
                     <div className={`relative px-0 ${templateStyles.pageMarginCls}`}>
 
                         <Notification theme={theme} data={notification} show={showNotif} setShow={setShowNotif} />

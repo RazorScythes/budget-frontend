@@ -341,7 +341,7 @@ const Navbar = ({ theme, setTheme, setUser, onMenuToggle, sidebarLayout = false 
     }
 
     return (
-        <header className={`${main.font} sticky top-0 z-50 w-full transition-all ${isLight ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-sm' : 'bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-[#1f1f1f] shadow-lg shadow-black/30'}`}>
+        <header className={`${main.font} sticky top-0 z-50 w-full min-w-0 overflow-x-clip transition-all ${isLight ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-sm' : 'bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-[#1f1f1f] shadow-lg shadow-black/30'}`}>
             <div className={`h-px w-full ${isLight ? 'bg-gradient-to-r from-transparent via-blue-400/60 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-500/40 to-transparent'}`} />
 
             <div className={`w-full transition-[max-width,padding] duration-300 ease-out ${sidebarLayout ? 'max-w-none px-3 sm:px-4 lg:px-5' : 'max-w-[1550px] mx-auto px-3 sm:px-6 lg:px-8'}`}>
