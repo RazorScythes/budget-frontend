@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-    faTimes, faShare, faUserPlus, faEye, faPen, faTrash,
+    faTimes, faUserPlus, faEye, faPen, faTrash,
     faUsers, faLock, faSpinner, faShieldHalved, faLink,
     faCopy, faSyncAlt, faSearch, faQrcode, faClock, faCheck,
 } from '@fortawesome/free-solid-svg-icons'
@@ -56,7 +56,7 @@ const ModalToast = ({ toast, isLight, onDismiss }) => {
 }
 
 const RolePicker = ({ value, onChange, isLight, compact = false }) => (
-    <div className={`grid grid-cols-2 gap-2 ${compact ? '' : 'mt-3'}`}>
+    <div className={`grid grid-cols-2 gap-2.5 ${compact ? '' : 'mt-4'}`}>
         {ROLES.map(role => {
             const active = value === role.id
             return (
@@ -64,22 +64,22 @@ const RolePicker = ({ value, onChange, isLight, compact = false }) => (
                     key={role.id}
                     type="button"
                     onClick={() => onChange(role.id)}
-                    className={`text-left rounded-xl border border-solid transition-all ${compact ? 'px-2.5 py-2' : 'px-3 py-2.5'} ${
+                    className={`text-left rounded-lg border border-solid transition-all ${compact ? 'px-3 py-2.5' : 'px-3.5 py-3'} ${
                         active
-                            ? (isLight ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-200' : 'border-blue-700 bg-blue-900/25 ring-1 ring-blue-800/50')
+                            ? (isLight ? 'border-blue-300 bg-blue-50' : 'border-blue-700 bg-blue-900/25')
                             : (isLight ? 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50' : 'border-[#2a2a2a] bg-[#111] hover:border-[#333] hover:bg-[#151515]')
                     }`}
                 >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                         <span className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             active ? (isLight ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white') : (isLight ? 'bg-slate-100 text-slate-500' : 'bg-[#1a1a1a] text-gray-400')
                         }`}>
-                            <FontAwesomeIcon icon={role.icon} className="text-[10px]" />
+                            <FontAwesomeIcon icon={role.icon} className="text-xs" />
                         </span>
                         <div className="min-w-0">
-                            <p className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{role.label}</p>
+                            <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{role.label}</p>
                             {!compact && (
-                                <p className={`text-[10px] leading-snug mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{role.description}</p>
+                                <p className={`text-sm mt-0.5 leading-snug ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{role.description}</p>
                             )}
                         </div>
                     </div>
@@ -105,21 +105,21 @@ const MemberRow = ({ share, isLight, onUpdateRole, onRemove, removingId, setRemo
     }
 
     return (
-        <div className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-solid transition-colors ${
+        <div className={`group flex items-center gap-3 px-3.5 py-3 rounded-lg border border-solid transition-colors ${
             isLight ? 'bg-slate-50/80 border-slate-100 hover:border-slate-200' : 'bg-[#111] border-[#1f1f1f] hover:border-[#2a2a2a]'
         }`}>
             {su.avatar ? (
-                <img src={su.avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10 flex-shrink-0" />
+                <img src={su.avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
             ) : (
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                    isLight ? 'bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-600' : 'bg-gradient-to-br from-blue-900/40 to-indigo-900/30 text-blue-300'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
+                    isLight ? 'bg-blue-100 text-blue-600' : 'bg-blue-900/30 text-blue-300'
                 }`}>
                     {su.username?.[0]?.toUpperCase() || '?'}
                 </div>
             )}
             <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold truncate ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>{su.username}</p>
-                <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                <p className={`text-sm font-semibold truncate ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{su.username}</p>
+                <p className={`text-sm mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
                     {share.role === 'editor' ? 'Can edit budget' : 'View only access'}
                 </p>
             </div>
@@ -133,23 +133,23 @@ const MemberRow = ({ share, isLight, onUpdateRole, onRemove, removingId, setRemo
                             onClick={() => share.role !== role.id && onUpdateRole(su._id, role.id)}
                             className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
                                 share.role === role.id
-                                    ? (isLight ? 'bg-blue-500 text-white shadow-sm' : 'bg-blue-600 text-white')
+                                    ? (isLight ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white')
                                     : (isLight ? 'text-slate-400 hover:text-slate-600' : 'text-gray-500 hover:text-gray-300')
                             }`}
                         >
-                            <FontAwesomeIcon icon={role.icon} className="text-[10px]" />
+                            <FontAwesomeIcon icon={role.icon} className="text-xs" />
                         </button>
                     ))}
                 </div>
                 {isRemoving ? (
                     <div className="flex items-center gap-1">
-                        <button type="button" onClick={handleRemove} className="px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500 text-white hover:bg-red-600">Remove</button>
-                        <button type="button" onClick={() => setRemovingId(null)} className={`px-2 py-1 rounded-md text-[10px] font-medium ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#1a1a1a]'}`}>Cancel</button>
+                        <button type="button" onClick={handleRemove} className="px-2.5 py-1 rounded-md text-sm font-semibold bg-red-500 text-white hover:bg-red-600">Remove</button>
+                        <button type="button" onClick={() => setRemovingId(null)} className={`px-2.5 py-1 rounded-md text-sm font-medium ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#1a1a1a]'}`}>Cancel</button>
                     </div>
                 ) : (
                     <button type="button" onClick={() => setRemovingId(su._id)} title="Remove access"
                         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isLight ? 'text-red-500 hover:bg-red-50' : 'text-red-400 hover:bg-red-900/20'}`}>
-                        <FontAwesomeIcon icon={faTrash} className="text-[11px]" />
+                        <FontAwesomeIcon icon={faTrash} className="text-xs" />
                     </button>
                 )}
             </div>
@@ -330,27 +330,18 @@ const ShareBudgetModal = ({
                 }`}
                 onClick={e => e.stopPropagation()}
             >
-
-                {/* Header */}
-                <div className={`relative px-5 pt-5 pb-3 border-b border-solid ${
-                    isLight ? 'border-slate-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50/50' : 'border-[#1f1f1f] bg-gradient-to-br from-blue-950/30 via-[#0e0e0e] to-indigo-950/20'
-                }`}>
-                    <button type="button" onClick={onClose}
-                        className={`absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'hover:bg-white/80 text-slate-400' : 'hover:bg-[#1a1a1a] text-gray-500'}`}>
-                        <FontAwesomeIcon icon={faTimes} className="text-sm" />
-                    </button>
-                    <div className="flex items-start gap-3.5 pr-8">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${isLight ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'}`}>
-                            <FontAwesomeIcon icon={faShare} className="text-base" />
+                <div className={`px-6 pt-5 pb-4 border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <h3 className={`text-2xl font-semibold leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>Share Budget</h3>
+                            <p className={`text-sm mt-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Invite people or share a link & QR code</p>
                         </div>
-                        <div>
-                            <h3 className={`text-base font-bold ${isLight ? 'text-slate-800' : 'text-white'}`}>Share Budget</h3>
-                            <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Invite people or share a link & QR code</p>
-                        </div>
+                        <button type="button" onClick={onClose}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-[#1f1f1f] text-gray-500'}`}>
+                            <FontAwesomeIcon icon={faTimes} className="text-sm" />
+                        </button>
                     </div>
-
-                    {/* Tabs */}
-                    <div className={`flex gap-1 mt-4 p-1 rounded-xl ${isLight ? 'bg-slate-100' : 'bg-[#111]'}`}>
+                    <div className={`flex gap-1 mt-4 p-1 rounded-lg ${isLight ? 'bg-slate-100' : 'bg-[#111]'}`}>
                         {[
                             { id: 'invite', label: 'Invite', icon: faUserPlus },
                             { id: 'link', label: 'Link & QR', icon: faQrcode },
@@ -359,25 +350,25 @@ const ShareBudgetModal = ({
                                 key={t.id}
                                 type="button"
                                 onClick={() => setTab(t.id)}
-                                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-medium transition-all ${
                                     tab === t.id
                                         ? (isLight ? 'bg-white text-blue-600 shadow-sm' : 'bg-[#1a1a1a] text-blue-400')
                                         : (isLight ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500 hover:text-gray-300')
                                 }`}
                             >
-                                <FontAwesomeIcon icon={t.icon} className="text-[10px]" />
+                                <FontAwesomeIcon icon={t.icon} className="text-xs" />
                                 {t.label}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="px-5 py-4 space-y-5 max-h-[min(65vh,480px)] overflow-y-auto">
+                <div className="px-6 py-5 space-y-5 max-h-[min(62vh,460px)] overflow-y-auto">
                     {tab === 'invite' && (
                         <>
                             <section ref={searchRef} className="relative">
-                                <label className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                    <FontAwesomeIcon icon={faSearch} className="text-[10px]" />
+                                <label className={`flex items-center gap-1.5 text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                                    <FontAwesomeIcon icon={faSearch} className="text-xs" />
                                     Search username or email
                                 </label>
                                 <div className={`flex rounded-xl border border-solid overflow-hidden focus-within:ring-2 transition-shadow ${
@@ -417,9 +408,9 @@ const ShareBudgetModal = ({
                                                     </div>
                                                 )}
                                                 <div className="min-w-0 flex-1">
-                                                    <p className={`text-sm font-medium truncate ${isLight ? 'text-slate-800' : 'text-gray-200'}`}>{u.username}</p>
+                                                    <p className={`text-sm font-medium truncate ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{u.username}</p>
                                                     {u.email && (
-                                                        <p className={`text-[11px] truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{u.email}</p>
+                                                        <p className={`text-sm mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{u.email}</p>
                                                     )}
                                                 </div>
                                             </button>
@@ -428,7 +419,7 @@ const ShareBudgetModal = ({
                                 )}
 
                                 {showDropdown && !searchLoading && username.trim().length >= 2 && searchResults.length === 0 && (
-                                    <div className={`absolute left-0 right-0 top-full mt-1 px-3 py-2.5 rounded-xl border border-solid text-xs ${
+                                    <div className={`absolute left-0 right-0 top-full mt-1 px-3 py-2.5 rounded-xl border border-solid text-sm ${
                                         isLight ? 'bg-white border-slate-200 text-slate-500' : 'bg-[#111] border-[#2a2a2a] text-gray-500'
                                     }`}>
                                         No users found
@@ -438,15 +429,15 @@ const ShareBudgetModal = ({
                                 <RolePicker value={role} onChange={onRoleChange} isLight={isLight} />
 
                                 <button type="button" onClick={handleInvite} disabled={!canInvite}
-                                    className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isLight ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                                    className={`w-full mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isLight ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
                                     {isInviting ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : <FontAwesomeIcon icon={faUserPlus} className="text-xs" />}
                                     {isInviting ? 'Sending invite…' : 'Send invite'}
                                 </button>
                             </section>
 
                             <section>
-                                <label className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                    <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
+                                <label className={`flex items-center gap-1.5 text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                                    <FontAwesomeIcon icon={faUsers} className="text-xs" />
                                     People with access {members.length > 0 && `(${members.length})`}
                                 </label>
                                 {members.length > 0 ? (
@@ -457,10 +448,10 @@ const ShareBudgetModal = ({
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className={`flex flex-col items-center py-8 px-4 rounded-xl border border-dashed ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-[#2a2a2a] bg-[#111]/50'}`}>
-                                        <FontAwesomeIcon icon={faLock} className={`text-lg mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                                        <p className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>Your budget is private</p>
-                                        <p className={`text-xs text-center mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Search and invite someone above</p>
+                                    <div className={`flex flex-col items-center py-7 px-5 rounded-lg border border-dashed ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-[#2a2a2a] bg-[#111]/50'}`}>
+                                        <FontAwesomeIcon icon={faLock} className={`text-sm mb-2.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                                        <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Your budget is private</p>
+                                        <p className={`text-sm text-center mt-1 ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>Search and invite someone above</p>
                                     </div>
                                 )}
                             </section>
@@ -468,10 +459,10 @@ const ShareBudgetModal = ({
                     )}
 
                     {tab === 'link' && (
-                        <section className="space-y-4">
+                        <section className="space-y-5">
                             <div>
-                                <label className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                    <FontAwesomeIcon icon={faClock} className="text-[10px]" />
+                                <label className={`flex items-center gap-1.5 text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                                    <FontAwesomeIcon icon={faClock} className="text-xs" />
                                     Link expiration
                                 </label>
                                 <select
@@ -488,7 +479,7 @@ const ShareBudgetModal = ({
                             </div>
 
                             <div>
-                                <label className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                <label className={`flex items-center gap-1.5 text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
                                     Default role for link invites
                                 </label>
                                 <RolePicker value={linkRole} onChange={setLinkRole} isLight={isLight} compact />
@@ -518,45 +509,45 @@ const ShareBudgetModal = ({
                             </div>
 
                             {linkValid ? (
-                                <div className={`rounded-xl border border-solid p-4 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-[#2a2a2a] bg-[#111]/50'}`}>
+                                <div className={`rounded-lg border border-solid p-4 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-[#2a2a2a] bg-[#111]/50'}`}>
                                     <div className="flex flex-col sm:flex-row items-center gap-4">
-                                        <div className={`p-3 rounded-xl flex-shrink-0 ${isLight ? 'bg-white border border-slate-200' : 'bg-[#1a1a1a] border border-[#333]'}`}>
-                                            <QRCodeSVG value={inviteUrl} size={120} level="M" includeMargin bgColor={isLight ? '#ffffff' : '#1a1a1a'} fgColor={isLight ? '#0f172a' : '#f1f5f9'} />
+                                        <div className={`p-2 rounded-lg flex-shrink-0 ${isLight ? 'bg-white border border-slate-200' : 'bg-[#1a1a1a] border border-[#333]'}`}>
+                                            <QRCodeSVG value={inviteUrl} size={96} level="M" includeMargin bgColor={isLight ? '#ffffff' : '#1a1a1a'} fgColor={isLight ? '#0f172a' : '#f1f5f9'} />
                                         </div>
                                         <div className="flex-1 w-full min-w-0 space-y-2">
-                                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Share link</p>
+                                            <p className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Share link</p>
                                             <div className={`flex rounded-lg border border-solid overflow-hidden ${isLight ? 'border-slate-200 bg-white' : 'border-[#2a2a2a] bg-[#0a0a0a]'}`}>
-                                                <input readOnly value={inviteUrl} className={`flex-1 px-3 py-2 text-xs bg-transparent border-0 focus:outline-none truncate ${isLight ? 'text-slate-700' : 'text-gray-300'}`} />
+                                                <input readOnly value={inviteUrl} className={`flex-1 px-3 py-2 text-sm bg-transparent border-0 focus:outline-none truncate ${isLight ? 'text-slate-700' : 'text-gray-300'}`} />
                                                 <button type="button" onClick={handleCopyLink}
-                                                    className={`px-3 py-2 flex items-center gap-1 text-xs font-semibold transition-colors ${isLight ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'}`}>
-                                                    <FontAwesomeIcon icon={copied ? faCheck : faCopy} className="text-[10px]" />
+                                                    className={`px-3 py-2 flex items-center gap-1 text-sm font-semibold transition-colors ${isLight ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'}`}>
+                                                    <FontAwesomeIcon icon={copied ? faCheck : faCopy} className="text-xs" />
                                                     {copied ? 'Copied' : 'Copy'}
                                                 </button>
                                             </div>
-                                            <p className={`flex items-center gap-1.5 text-[11px] ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
-                                                <FontAwesomeIcon icon={faClock} className="text-[10px]" />
+                                            <p className={`flex items-center gap-1.5 text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                <FontAwesomeIcon icon={faClock} className="text-xs" />
                                                 Expires {formatExpiry(shareLink.expiresAt)}
                                             </p>
-                                            <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+                                            <p className={`text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                                                 Anyone with this link can join as <strong>{linkRole}</strong> until it expires. Refresh to invalidate the old code.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             ) : !linkLoading && (
-                                <div className={`flex flex-col items-center py-8 px-4 rounded-xl border border-dashed ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-[#2a2a2a] bg-[#111]/50'}`}>
-                                    <FontAwesomeIcon icon={faQrcode} className={`text-2xl mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                                    <p className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>No active link</p>
-                                    <p className={`text-xs text-center mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Generate a link to share via QR code or URL</p>
+                                <div className={`flex flex-col items-center py-7 px-5 rounded-lg border border-dashed ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-[#2a2a2a] bg-[#111]/50'}`}>
+                                    <FontAwesomeIcon icon={faQrcode} className={`text-sm mb-2.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                                    <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>No active link</p>
+                                    <p className={`text-sm text-center mt-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Generate a link to share via QR code or URL</p>
                                 </div>
                             )}
                         </section>
                     )}
                 </div>
 
-                <div className={`px-5 py-3 border-t border-solid flex items-center gap-2 ${isLight ? 'border-slate-100 bg-slate-50/80' : 'border-[#1f1f1f] bg-[#0a0a0a]/80'}`}>
-                    <FontAwesomeIcon icon={faShieldHalved} className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                    <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                <div className={`px-6 py-4 border-t border-solid flex items-center gap-2.5 ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
+                    <FontAwesomeIcon icon={faShieldHalved} className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                    <p className={`text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                         Links expire automatically. Refresh anytime to revoke old codes.
                     </p>
                 </div>

@@ -5,7 +5,7 @@ import { AnimateIn } from '../SharedComponents'
 import { useSettings } from './SettingsContext.jsx'
 
 export default function SettingsHelpPanel() {
-    const { isLight, cardP, descCls } = useSettings()
+    const { isLight, cardP, descCls, titleCls, metaCls } = useSettings()
 
     return (
         <div className="space-y-4">
@@ -16,7 +16,7 @@ export default function SettingsHelpPanel() {
                         <FontAwesomeIcon icon={faEye} className={`text-sm ${isLight ? 'text-teal-500' : 'text-teal-400'}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Feature Reference</h3>
+                        <h3 className={titleCls}>Feature Reference</h3>
                         <p className={descCls}>How special features work in the Budget Manager</p>
                     </div>
                 </div>
@@ -33,8 +33,8 @@ export default function SettingsHelpPanel() {
                                 <FontAwesomeIcon icon={f.icon} className={`text-xs ${f.color}`} />
                             </div>
                             <div>
-                                <p className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{f.title}</p>
-                                <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{f.desc}</p>
+                                <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{f.title}</p>
+                                <p className={metaCls}>{f.desc}</p>
                             </div>
                         </div>
                     ))}

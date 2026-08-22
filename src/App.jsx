@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Provider, useSelector } from 'react-redux'
 import { store } from './app/store'
@@ -11,7 +11,8 @@ import ResetPassword from './components/ResetPassword'
 import VerifyEmail from './components/auth/VerifyEmail'
 import VerifyEmailResult from './components/auth/VerifyEmailResult'
 import Budget from './components/Pages/Budget'
-import Navbar from './components/Custom/Navbar'
+import AppShell from './components/Layout/AppShell'
+import { getPageLayout, usesSidebarNav } from './components/Pages/Budget/constants'
 import './index.css'
 
 const RootRedirect = ({ user }) => {
@@ -19,17 +20,21 @@ const RootRedirect = ({ user }) => {
 }
 
 const ProtectedLayout = ({ user, theme, setTheme, setUser }) => {
+    const budgetSettings = useSelector((state) => state.budget.budgetSettings)
+    const pageLayout = getPageLayout(budgetSettings)
+
     if (!user) {
         return <Navigate to="/login" replace />
     }
 
     return (
-        <>
-            <Navbar theme={theme} setTheme={setTheme} setUser={setUser} />
-            <main className="min-h-[calc(100dvh-4rem)] w-full">
-                <Outlet />
-            </main>
-        </>
+        <AppShell
+            user={user}
+            theme={theme}
+            setTheme={setTheme}
+            setUser={setUser}
+            sidebarEnabled={usesSidebarNav(pageLayout)}
+        />
     )
 }
 

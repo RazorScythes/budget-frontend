@@ -28,8 +28,22 @@ function showView(name) {
   })
 }
 
+let currencySymbol = '₱'
+
 function fmt(n) {
-  return `₱${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `${currencySymbol}${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+const CURRENCY_SYMBOLS = { PHP: '₱', USD: '$', EUR: '€', GBP: '£', JPY: '¥', KRW: '₩', CNY: '¥', AUD: 'A$', CAD: 'C$', INR: '₹', THB: '฿' }
+
+async function loadCurrencySymbol() {
+  try {
+    const stored = await chrome.storage.sync.get(['currencyCode'])
+    const code = stored.currencyCode || 'PHP'
+    currencySymbol = CURRENCY_SYMBOLS[code] || '₱'
+  } catch {
+    currencySymbol = '₱'
+  }
 }
 
 function todayISO() {
@@ -131,6 +145,7 @@ async function boot() {
   showView('loading')
   try {
     await ensureConfig()
+    await loadCurrencySymbol()
     const { token, profile } = await getSession()
     if (token && profile) {
       await initMain(token, profile)

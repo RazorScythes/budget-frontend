@@ -7,7 +7,7 @@ import {
     faTag,
 } from '@fortawesome/free-solid-svg-icons'
 import { searchBudgetUsers } from '../../../endpoint'
-import { ModalOverlay, SafeIcon } from './SharedComponents'
+import { ModalOverlay } from './SharedComponents'
 
 const ModalToast = ({ toast, isLight, onDismiss }) => {
     useEffect(() => {
@@ -55,26 +55,26 @@ const SharedMemberRow = ({ user, isLight, onRemove, removingId, setRemovingId, o
     }
 
     return (
-        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border border-solid transition-colors ${
+        <div className={`flex items-center gap-3 px-3.5 py-3 rounded-lg border border-solid transition-colors ${
             isLight ? 'bg-slate-50/80 border-slate-100 hover:border-slate-200' : 'bg-[#111] border-[#1f1f1f] hover:border-[#2a2a2a]'
         }`}>
             {avatar ? (
-                <img src={avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10 flex-shrink-0" />
+                <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
             ) : (
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                    isLight ? 'bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-600' : 'bg-gradient-to-br from-emerald-900/40 to-teal-900/30 text-emerald-300'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
+                    isLight ? 'bg-emerald-100 text-emerald-600' : 'bg-emerald-900/30 text-emerald-300'
                 }`}>
                     {(name || '?')[0]?.toUpperCase()}
                 </div>
             )}
             <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold truncate ${isLight ? 'text-slate-800' : 'text-gray-100'}`}>{name}</p>
-                <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Can use this category on expenses</p>
+                <p className={`text-sm font-semibold truncate ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{name}</p>
+                <p className={`text-sm mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>Can use this category on expenses</p>
             </div>
             {isRemoving ? (
                 <div className="flex items-center gap-1 flex-shrink-0">
-                    <button type="button" onClick={handleRemove} className="px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500 text-white hover:bg-red-600">Remove</button>
-                    <button type="button" onClick={() => setRemovingId(null)} className={`px-2 py-1 rounded-md text-[10px] font-medium ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#1a1a1a]'}`}>Cancel</button>
+                    <button type="button" onClick={handleRemove} className="px-2.5 py-1 rounded-md text-sm font-semibold bg-red-500 text-white hover:bg-red-600">Remove</button>
+                    <button type="button" onClick={() => setRemovingId(null)} className={`px-2.5 py-1 rounded-md text-sm font-medium ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#1a1a1a]'}`}>Cancel</button>
                 </div>
             ) : (
                 <button
@@ -83,7 +83,7 @@ const SharedMemberRow = ({ user, isLight, onRemove, removingId, setRemovingId, o
                     title="Remove access"
                     className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${isLight ? 'text-red-500 hover:bg-red-50' : 'text-red-400 hover:bg-red-900/20'}`}
                 >
-                    <FontAwesomeIcon icon={faTrash} className="text-[11px]" />
+                    <FontAwesomeIcon icon={faTrash} className="text-xs" />
                 </button>
             )}
         </div>
@@ -186,55 +186,36 @@ const ShareCategoryModal = ({
         <>
             <ModalOverlay onClose={onClose} isLight={isLight}>
                 <div
-                    className={`relative w-full max-w-md rounded-2xl border border-solid shadow-2xl overflow-hidden ${
+                    className={`relative w-full max-w-lg rounded-2xl border border-solid shadow-2xl overflow-hidden ${
                         isLight ? 'bg-white border-slate-200' : 'bg-[#0e0e0e] border-[#2B2B2B]'
                     }`}
                     onClick={e => e.stopPropagation()}
                 >
-                    {/* Header */}
-                    <div className={`relative px-5 pt-5 pb-4 border-b border-solid ${
-                        isLight
-                            ? 'border-slate-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50/50'
-                            : 'border-[#1f1f1f] bg-gradient-to-br from-emerald-950/25 via-[#0e0e0e] to-teal-950/15'
-                    }`}>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className={`absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'hover:bg-white/80 text-slate-400' : 'hover:bg-[#1a1a1a] text-gray-500'}`}
-                        >
-                            <FontAwesomeIcon icon={faTimes} className="text-sm" />
-                        </button>
-
-                        <div className="flex items-start gap-3.5 pr-8">
-                            <div
-                                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
-                                style={{ backgroundColor: (category.color || '#94a3b8') + '25' }}
-                            >
-                                {category.icon ? (
-                                    <SafeIcon name={category.icon} cls="text-base" style={{ color: category.color }} />
-                                ) : (
-                                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: category.color || '#94a3b8' }} />
-                                )}
-                            </div>
+                    <div className={`px-6 pt-5 pb-4 border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
+                        <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0">
-                                <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
-                                    {typeLabel} category
-                                </p>
-                                <h3 className={`text-base font-bold truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>
-                                    Share &ldquo;{category.name}&rdquo;
+                                <h3 className={`text-2xl font-semibold leading-tight truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>
+                                    Share "{category.name}"
                                 </h3>
-                                <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-                                    Let others record transactions under this category
+                                <p className={`text-sm mt-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                                    Let others record {typeLabel.toLowerCase()} transactions under this category
                                 </p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-[#1f1f1f] text-gray-500'}`}
+                            >
+                                <FontAwesomeIcon icon={faTimes} className="text-sm" />
+                            </button>
                         </div>
                     </div>
 
-                    <div className="px-5 py-4 space-y-5 max-h-[min(60vh,420px)] overflow-y-auto">
+                    <div className="px-6 py-5 space-y-5 max-h-[min(62vh,460px)] overflow-y-auto">
                         {/* Invite */}
                         <section ref={searchRef} className="relative">
-                            <label className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                <FontAwesomeIcon icon={faSearch} className="text-[10px]" />
+                            <label className={`flex items-center gap-1.5 text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                                <FontAwesomeIcon icon={faSearch} className="text-xs" />
                                 Search username or email
                             </label>
                             <div className={`flex rounded-xl border border-solid overflow-hidden focus-within:ring-2 transition-shadow ${
@@ -280,9 +261,9 @@ const ShareCategoryModal = ({
                                                 </div>
                                             )}
                                             <div className="min-w-0 flex-1">
-                                                <p className={`text-sm font-medium truncate ${isLight ? 'text-slate-800' : 'text-gray-200'}`}>{u.username}</p>
+                                                <p className={`text-sm font-medium truncate ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{u.username}</p>
                                                 {u.email && (
-                                                    <p className={`text-[11px] truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{u.email}</p>
+                                                    <p className={`text-sm mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{u.email}</p>
                                                 )}
                                             </div>
                                         </button>
@@ -291,7 +272,7 @@ const ShareCategoryModal = ({
                             )}
 
                             {showDropdown && !searchLoading && username.trim().length >= 2 && searchResults.length === 0 && (
-                                <div className={`absolute left-0 right-0 top-full mt-1 px-3 py-2.5 rounded-xl border border-solid text-xs ${
+                                <div className={`absolute left-0 right-0 top-full mt-1 px-3 py-2.5 rounded-xl border border-solid text-sm ${
                                     isLight ? 'bg-white border-slate-200 text-slate-500' : 'bg-[#111] border-[#2a2a2a] text-gray-500'
                                 }`}>
                                     No users found
@@ -302,7 +283,7 @@ const ShareCategoryModal = ({
                                 type="button"
                                 onClick={handleShare}
                                 disabled={!canShare}
-                                className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                                className={`w-full mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                                     isLight ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                 }`}
                             >
@@ -317,8 +298,8 @@ const ShareCategoryModal = ({
 
                         {/* Members */}
                         <section>
-                            <label className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
+                            <label className={`flex items-center gap-1.5 text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                                <FontAwesomeIcon icon={faUsers} className="text-xs" />
                                 Shared with {members.length > 0 && `(${members.length})`}
                             </label>
                             {members.length > 0 ? (
@@ -336,12 +317,12 @@ const ShareCategoryModal = ({
                                     ))}
                                 </div>
                             ) : (
-                                <div className={`flex flex-col items-center py-8 px-4 rounded-xl border border-dashed ${
+                                <div className={`flex flex-col items-center py-7 px-5 rounded-lg border border-dashed ${
                                     isLight ? 'border-slate-200 bg-slate-50/50' : 'border-[#2a2a2a] bg-[#111]/50'
                                 }`}>
-                                    <FontAwesomeIcon icon={faLock} className={`text-lg mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                                    <p className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>Not shared yet</p>
-                                    <p className={`text-xs text-center mt-1 max-w-[240px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                    <FontAwesomeIcon icon={faLock} className={`text-sm mb-2.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                                    <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Not shared yet</p>
+                                    <p className={`text-sm text-center mt-1 max-w-[260px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                                         Search for someone above to give them access to this category
                                     </p>
                                 </div>
@@ -349,9 +330,9 @@ const ShareCategoryModal = ({
                         </section>
                     </div>
 
-                    <div className={`px-5 py-3 border-t border-solid flex items-center gap-2 ${isLight ? 'border-slate-100 bg-slate-50/80' : 'border-[#1f1f1f] bg-[#0a0a0a]/80'}`}>
-                        <FontAwesomeIcon icon={faTag} className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                        <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                    <div className={`px-6 py-4 border-t border-solid flex items-center gap-2.5 ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
+                        <FontAwesomeIcon icon={faTag} className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                        <p className={`text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                             Shared users can select this category when logging expenses or income.
                         </p>
                     </div>

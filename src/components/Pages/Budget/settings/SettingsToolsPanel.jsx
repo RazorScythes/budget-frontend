@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faDownload, faKey, faCopy, faTrash, faSpinner, faSyncAlt, faCheck } from '@fortawesome/free-solid-svg-icons'
 import { faChrome } from '@fortawesome/free-brands-svg-icons'
-import { AnimateIn } from '../SharedComponents'
+import { AnimateIn, SettingsListSkeleton } from '../SharedComponents'
 import { useSettings } from './SettingsContext.jsx'
 import { CHROME_EXTENSION_DOWNLOAD } from '../constants'
 import { getExtensionClient, createExtensionClient, revokeExtensionClient } from '../../../../endpoint'
 
 export default function SettingsToolsPanel() {
-    const { isLight, cardP, descCls, btnPrimary, btnSecondary, setNotification } = useSettings()
+    const { isLight, cardP, descCls, titleCls, btnPrimary, btnSecondary, setNotification } = useSettings()
     const [clientStatus, setClientStatus] = useState(null)
     const [loadingClient, setLoadingClient] = useState(true)
     const [generating, setGenerating] = useState(false)
@@ -74,12 +74,12 @@ export default function SettingsToolsPanel() {
                         <FontAwesomeIcon icon={faChrome} className={`text-sm ${isLight ? 'text-sky-500' : 'text-sky-400'}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Chrome Extension</h3>
+                        <h3 className={titleCls}>Chrome Extension</h3>
                         <p className={descCls}>Log daily expenses from your browser toolbar</p>
                     </div>
                 </div>
 
-                <p className={`text-xs mb-4 leading-relaxed ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                <p className={`text-sm mb-4 leading-relaxed ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                     Download the extension, generate a personal client key below, paste it in extension settings, then sign in. Expenses sync to the <strong className={isLight ? 'text-slate-600' : 'text-gray-300'}>Daily</strong> tab.
                 </p>
 
@@ -106,7 +106,7 @@ export default function SettingsToolsPanel() {
                     </button>
                 </div>
 
-                <ol className={`space-y-2 text-[11px] list-decimal list-inside mb-5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                <ol className={`space-y-2 text-sm list-decimal list-inside mb-5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                     <li>Download and unzip the extension</li>
                     <li>Generate a client key below and paste it in extension options</li>
                     <li>Load unpacked in <code className={`px-1 py-0.5 rounded ${isLight ? 'bg-slate-100' : 'bg-[#111]'}`}>chrome://extensions</code></li>
@@ -119,21 +119,19 @@ export default function SettingsToolsPanel() {
                             <FontAwesomeIcon icon={faKey} className={`text-xs ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
                         </div>
                         <div>
-                            <h4 className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Extension client key</h4>
-                            <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Personal key — replaces shared API secrets in the extension</p>
+                            <h4 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Extension client key</h4>
+                            <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Personal key — replaces shared API secrets in the extension</p>
                         </div>
                     </div>
 
                     {loadingClient ? (
-                        <p className={`text-xs flex items-center gap-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                            <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" /> Loading…
-                        </p>
+                        <SettingsListSkeleton isLight={isLight} rows={2} />
                     ) : (
                         <>
                             {clientStatus?.active && !revealedKey && (
-                                <div className={`flex flex-wrap items-center gap-2 mb-3 text-[11px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                                <div className={`flex flex-wrap items-center gap-2 mb-3 text-sm ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md ${isLight ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-900/20 text-emerald-400'}`}>
-                                        <FontAwesomeIcon icon={faCheck} className="text-[9px]" /> Active
+                                        <FontAwesomeIcon icon={faCheck} className="text-xs" /> Active
                                     </span>
                                     <code className={`px-1.5 py-0.5 rounded ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e0e0e] border border-[#333]'}`}>
                                         {clientStatus.maskedKey}
@@ -146,15 +144,15 @@ export default function SettingsToolsPanel() {
 
                             {revealedKey && (
                                 <div className={`mb-3 p-3 rounded-lg border border-solid ${isLight ? 'bg-amber-50/80 border-amber-200' : 'bg-amber-900/10 border-amber-800/40'}`}>
-                                    <p className={`text-[10px] font-semibold uppercase tracking-wide mb-2 ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
+                                    <p className={`text-sm font-semibold uppercase tracking-wide mb-2 ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
                                         Copy now — shown once
                                     </p>
                                     <div className="flex gap-2">
-                                        <code className={`flex-1 text-[10px] break-all px-2 py-1.5 rounded ${isLight ? 'bg-white text-slate-700' : 'bg-[#0e0e0e] text-gray-200'}`}>
+                                        <code className={`flex-1 text-sm break-all px-2 py-1.5 rounded ${isLight ? 'bg-white text-slate-700' : 'bg-[#0e0e0e] text-gray-200'}`}>
                                             {revealedKey}
                                         </code>
                                         <button type="button" className={btnSecondary} onClick={() => copyKey(revealedKey, 'Client key copied')}>
-                                            <FontAwesomeIcon icon={faCopy} className="text-[10px]" />
+                                            <FontAwesomeIcon icon={faCopy} className="text-xs" />
                                         </button>
                                     </div>
                                 </div>

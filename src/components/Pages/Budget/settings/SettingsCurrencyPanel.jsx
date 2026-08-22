@@ -9,7 +9,7 @@ import { CURRENCIES, DEFAULT_EXCHANGE_RATES } from '../constants'
 
 export default function SettingsCurrencyPanel() {
     const {
-        isLight, cardP, descCls, templateStyles, labelCls, selectCls, btnPrimary, inputCls,
+        isLight, cardP, descCls, titleCls, templateStyles, labelCls, selectCls, btnPrimary, inputCls,
         viewCurrency, setViewCurrency, savedBaseCurrency, activeViewCurrency, handleSetDefaultCurrency,
         rateEditorOpen, setRateEditorOpen, rateEdits, setRateEdits, savedRates, exchangeRates,
         confirmReset, setConfirmReset, handleResetRates, resettingRates, handleSaveRates, savingRates,
@@ -24,7 +24,7 @@ export default function SettingsCurrencyPanel() {
                         <FontAwesomeIcon icon={faExchangeAlt} className={`text-sm ${templateStyles?.accentText || (isLight ? 'text-blue-500' : 'text-blue-400')}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Default Currency</h3>
+                        <h3 className={titleCls}>Default Currency</h3>
                         <p className={descCls}>All amounts will be displayed in this currency</p>
                     </div>
                 </div>
@@ -50,7 +50,7 @@ export default function SettingsCurrencyPanel() {
                                 Set {activeViewCurrency} as Default
                             </button>
                         ) : (
-                            <div className={`w-full text-center py-2.5 rounded-lg text-xs font-medium ${isLight ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-900/20 text-emerald-400'}`}>
+                            <div className={`w-full text-center py-2.5 rounded-lg text-sm font-medium ${isLight ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-900/20 text-emerald-400'}`}>
                                 <FontAwesomeIcon icon={faCheckCircle} className="mr-1.5" />
                                 {activeViewCurrency} is your default currency
                             </div>
@@ -67,17 +67,17 @@ export default function SettingsCurrencyPanel() {
                             <FontAwesomeIcon icon={faCoins} className={`text-sm ${isLight ? 'text-amber-500' : 'text-amber-400'}`} />
                         </div>
                         <div>
-                            <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Exchange Rates</h3>
+                            <h3 className={titleCls}>Exchange Rates</h3>
                             <p className={descCls}>Rates relative to PHP (₱1 = X foreign)</p>
                         </div>
                     </div>
-                    <button onClick={() => setRateEditorOpen(!rateEditorOpen)} className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
+                    <button onClick={() => setRateEditorOpen(!rateEditorOpen)} className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-all ${
                         rateEditorOpen
                             ? (isLight ? 'bg-slate-100 text-slate-600' : 'bg-[#1f1f1f] text-gray-400')
                             : (isLight ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-amber-900/20 text-amber-400 hover:bg-amber-900/30')
                     }`}>
-                        <FontAwesomeIcon icon={rateEditorOpen ? faTimes : faPen} className="text-[10px]" />
-                        {rateEditorOpen ? 'Cancel' : 'Edit Rates'}
+                        <FontAwesomeIcon icon={rateEditorOpen ? faTimes : faPen} className="text-xs" />
+                        {rateEditorOpen ? 'Cancel' : 'Edit rates'}
                     </button>
                 </div>
 
@@ -85,15 +85,15 @@ export default function SettingsCurrencyPanel() {
                     {CURRENCIES.filter(c => c.code !== 'PHP').map(c => (
                         <div key={c.code} className={`px-3 py-2.5 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-[#111]'}`}>
                             <div className="flex items-center justify-between mb-1">
-                                <span className={`text-xs font-bold ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{c.symbol} {c.code}</span>
-                                {savedRates?.[c.code] && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isLight ? 'bg-blue-50 text-blue-500' : 'bg-blue-900/20 text-blue-400'}`}>Custom</span>}
+                                <span className={`text-sm font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{c.symbol} {c.code}</span>
+                                {savedRates?.[c.code] && <span className={`text-xs px-2 py-0.5 rounded-md ${isLight ? 'bg-blue-50 text-blue-500' : 'bg-blue-900/20 text-blue-400'}`}>Custom</span>}
                             </div>
                             {rateEditorOpen ? (
                                 <input
                                     type="number"
                                     value={rateEdits[c.code] || ''}
                                     onChange={e => setRateEdits(prev => ({ ...prev, [c.code]: e.target.value }))}
-                                    className={`${inputCls} !py-1.5 !text-xs`}
+                                    className={`${inputCls} !py-1.5 !text-sm`}
                                     step="any"
                                     min="0"
                                     placeholder={`${DEFAULT_EXCHANGE_RATES[c.code] || ''}`}
@@ -112,15 +112,15 @@ export default function SettingsCurrencyPanel() {
                         <div className="flex items-center gap-2">
                             {confirmReset ? (
                                 <>
-                                    <span className={`text-xs ${isLight ? 'text-red-500' : 'text-red-400'}`}>Reset all to live rates?</span>
-                                    <button onClick={handleResetRates} disabled={resettingRates} className={`text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all ${isLight ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-red-600 text-white hover:bg-red-700'}`}>
+                                    <span className={`text-sm ${isLight ? 'text-red-500' : 'text-red-400'}`}>Reset all to live rates?</span>
+                                    <button onClick={handleResetRates} disabled={resettingRates} className={`text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all ${isLight ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-red-600 text-white hover:bg-red-700'}`}>
                                         {resettingRates ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : 'Confirm'}
                                     </button>
-                                    <button onClick={() => setConfirmReset(false)} className={`text-xs px-2 py-1.5 rounded-lg ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#1f1f1f]'}`}>No</button>
+                                    <button onClick={() => setConfirmReset(false)} className={`text-sm px-2 py-1.5 rounded-lg ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#1f1f1f]'}`}>No</button>
                                 </>
                             ) : (
-                                <button onClick={() => setConfirmReset(true)} className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#2a2a2a]'}`}>
-                                    <FontAwesomeIcon icon={faSyncAlt} className="mr-1.5 text-[10px]" />
+                                <button onClick={() => setConfirmReset(true)} className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-all ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#2a2a2a]'}`}>
+                                    <FontAwesomeIcon icon={faSyncAlt} className="mr-1.5 text-xs" />
                                     Reset to Live
                                 </button>
                             )}
@@ -140,7 +140,7 @@ export default function SettingsCurrencyPanel() {
                         <FontAwesomeIcon icon={faMoneyBillWave} className={`text-sm ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Supported Currencies</h3>
+                        <h3 className={titleCls}>Supported Currencies</h3>
                         <p className={descCls}>Available currencies for transactions and display</p>
                     </div>
                 </div>
@@ -158,12 +158,12 @@ export default function SettingsCurrencyPanel() {
                                 <div className="flex items-center justify-between">
                                     <span className={`text-sm font-bold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{c.symbol} {c.code}</span>
                                     <div className="flex items-center gap-1">
-                                        {isDefault && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isLight ? 'bg-amber-50 text-amber-600' : 'bg-amber-900/20 text-amber-400'}`}>★</span>}
-                                        {isActive && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-900/30 text-indigo-400'}`}>Viewing</span>}
+                                        {isDefault && <span className={`text-xs px-1.5 py-0.5 rounded-full ${isLight ? 'bg-amber-50 text-amber-600' : 'bg-amber-900/20 text-amber-400'}`}>★</span>}
+                                        {isActive && <span className={`text-xs px-1.5 py-0.5 rounded-full ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-900/30 text-indigo-400'}`}>Viewing</span>}
                                     </div>
                                 </div>
-                                <p className={`text-[11px] truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{c.name}</p>
-                                {rate && <p className={`text-[10px] mt-1 ${isLight ? 'text-slate-300' : 'text-gray-600'}`}>₱1 = {rate.toFixed(4)}</p>}
+                                <p className={`text-sm truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{c.name}</p>
+                                {rate && <p className={`text-sm mt-1 ${isLight ? 'text-slate-300' : 'text-gray-600'}`}>₱1 = {rate.toFixed(4)}</p>}
                             </div>
                         )
                     })}

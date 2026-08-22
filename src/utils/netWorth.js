@@ -3,11 +3,19 @@ import { calcAllSavingsTotal } from './savings'
 /**
  * Net worth = savings + debts owed to you − debts you owe
  */
-export const calcNetWorth = ({ savingsAccounts = [], debts = [] }) => {
+const convert = (amount, currency, rates = {}, base = 'PHP') => {
+    const from = currency || base
+    if (from === base) return Number(amount) || 0
+    const rate = Number(rates[from])
+    if (!rate) return Number(amount) || 0
+    return (Number(amount) || 0) / rate
+}
+
+export const calcNetWorth = ({ savingsAccounts = [], debts = [], rates = {}, baseCurrency = 'PHP' }) => {
     const savingsTotal = calcAllSavingsTotal(savingsAccounts)
     const activeDebts = debts.filter(d => d.status !== 'paid' && d.amount_paid < d.total_amount)
-    const totalOwed = activeDebts.filter(d => d.type === 'owe').reduce((s, d) => s + (d.total_amount - d.amount_paid), 0)
-    const totalOwedToYou = activeDebts.filter(d => d.type === 'owed').reduce((s, d) => s + (d.total_amount - d.amount_paid), 0)
+    const totalOwed = activeDebts.filter(d => d.type === 'owe').reduce((s, d) => s + convert(d.total_amount - d.amount_paid, d.currency, rates, baseCurrency), 0)
+    const totalOwedToYou = activeDebts.filter(d => d.type === 'owed').reduce((s, d) => s + convert(d.total_amount - d.amount_paid, d.currency, rates, baseCurrency), 0)
     return {
         netWorth: savingsTotal + totalOwedToYou - totalOwed,
         savingsTotal,

@@ -37,7 +37,8 @@ const variantStyles = {
     },
 };
 
-const Notification = ({ data, theme = 'light', duration = 4000, show = true, setShow }) => {
+const Notification = ({ data, theme = 'light', duration, show = true, setShow }) => {
+    const toastDuration = duration ?? (data?.onUndo ? 8000 : 4000)
     const [isVisible, setIsVisible] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
     const [hasEntered, setHasEntered] = useState(false);
@@ -56,7 +57,7 @@ const Notification = ({ data, theme = 'light', duration = 4000, show = true, set
             const start = Date.now();
             const interval = setInterval(() => {
                 const elapsed = Date.now() - start;
-                const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+                const remaining = Math.max(0, 100 - (elapsed / toastDuration) * 100);
                 setProgress(remaining);
             }, 50);
 
@@ -67,7 +68,7 @@ const Notification = ({ data, theme = 'light', duration = 4000, show = true, set
                     setIsVisible(false);
                     setShow(false);
                 }, 280);
-            }, duration);
+            }, toastDuration);
 
             return () => {
                 if (enterIdRef.current != null) cancelAnimationFrame(enterIdRef.current);
@@ -75,7 +76,7 @@ const Notification = ({ data, theme = 'light', duration = 4000, show = true, set
                 clearInterval(interval);
             };
         }
-    }, [show, data?.message, duration, setShow]);
+    }, [show, data?.message, toastDuration, setShow]);
 
     const handleClose = (e) => {
         e.stopPropagation();
@@ -121,6 +122,21 @@ const Notification = ({ data, theme = 'light', duration = 4000, show = true, set
                     <p className="text-sm sm:text-base font-medium leading-snug flex-1 min-w-0">
                         {data?.message}
                     </p>
+                    {typeof data?.onUndo === 'function' && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                data.onUndo()
+                                handleClose(e)
+                            }}
+                            className={`flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg ${
+                                isLight ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-emerald-900/30 text-emerald-300 hover:bg-emerald-900/50'
+                            }`}
+                        >
+                            Undo
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={handleClose}

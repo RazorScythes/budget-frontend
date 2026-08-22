@@ -7,7 +7,7 @@ import {
     faChevronDown, faChevronUp, faInbox,
 } from '@fortawesome/free-solid-svg-icons'
 import { getBudgetAuditLogs } from '../../../endpoint'
-import { AnimateIn } from './SharedComponents'
+import { AnimateIn, SettingsListSkeleton } from './SharedComponents'
 
 const TAB_FILTERS = [
     { id: '', label: 'All', icon: faHistory },
@@ -100,9 +100,11 @@ const groupLogsByDate = (logs) => {
     return groups
 }
 
-const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
+const AuditLogPanel = ({ isLight, card, cardP, descCls, titleCls, metaCls }) => {
     const shellCls = cardP || `${card} p-5`
-    const descriptionCls = descCls || `text-[11px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`
+    const descriptionCls = descCls || `text-sm mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-500'}`
+    const headingCls = titleCls || `text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`
+    const captionCls = metaCls || `text-sm ${isLight ? 'text-slate-500' : 'text-gray-500'}`
 
     const [logs, setLogs] = useState([])
     const [loading, setLoading] = useState(true)
@@ -148,7 +150,7 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
 
     const grouped = useMemo(() => groupLogsByDate(filteredLogs), [filteredLogs])
 
-    const chipCls = (active) => `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all border border-solid ${
+    const chipCls = (active) => `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border border-solid ${
         active
             ? (isLight ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-violet-900/20 text-violet-300 border-violet-800/40')
             : (isLight ? 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50' : 'bg-[#111] text-gray-400 border-[#2B2B2B] hover:border-[#444] hover:bg-[#161616]')
@@ -164,7 +166,7 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                             <FontAwesomeIcon icon={faHistory} className={`text-sm ${isLight ? 'text-violet-500' : 'text-violet-400'}`} />
                         </div>
                         <div>
-                            <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Activity Log</h3>
+                            <h3 className={headingCls}>Activity Log</h3>
                             <p className={descriptionCls}>Track changes made by you and shared collaborators</p>
                         </div>
                     </div>
@@ -174,11 +176,11 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                             onClick={loadLogs}
                             disabled={loading}
                             title="Refresh"
-                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all disabled:opacity-50 ${
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50 ${
                                 isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#222]'
                             }`}
                         >
-                            <FontAwesomeIcon icon={faSyncAlt} className={`text-[10px] ${loading ? 'animate-spin' : ''}`} />
+                            <FontAwesomeIcon icon={faSyncAlt} className={`text-xs ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </button>
                         <button
@@ -189,7 +191,7 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                             }`}
                             aria-expanded={expanded}
                         >
-                            <FontAwesomeIcon icon={expanded ? faChevronUp : faChevronDown} className="text-[10px]" />
+                            <FontAwesomeIcon icon={expanded ? faChevronUp : faChevronDown} className="text-xs" />
                         </button>
                     </div>
                 </div>
@@ -205,7 +207,7 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                                 { label: 'Most active', value: stats.topTab ? stats.topTab.charAt(0).toUpperCase() + stats.topTab.slice(1) : '—', accent: isLight ? 'text-slate-700' : 'text-gray-200', small: true },
                             ].map((s, i) => (
                                 <div key={i} className={`rounded-xl px-3 py-2.5 border border-solid ${isLight ? 'bg-slate-50 border-slate-100' : 'bg-[#111] border-[#1f1f1f]'}`}>
-                                    <p className={`text-[10px] uppercase tracking-wider font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.label}</p>
+                                    <p className={`text-sm uppercase tracking-wider font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.label}</p>
                                     <p className={`font-bold mt-0.5 truncate ${s.small ? 'text-sm capitalize' : 'text-lg'} ${s.accent}`}>{s.value}</p>
                                 </div>
                             ))}
@@ -214,13 +216,13 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                         {/* Search + filters */}
                         <div className="space-y-3 mb-4">
                             <div className="relative">
-                                <FontAwesomeIcon icon={faSearch} className={`absolute left-3 top-1/2 -translate-y-1/2 text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                                <FontAwesomeIcon icon={faSearch} className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
                                 <input
                                     type="search"
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
                                     placeholder="Search activity…"
-                                    className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs border border-solid outline-none focus:ring-2 focus:ring-violet-500/20 ${
+                                    className={`w-full pl-8 pr-3 py-2 rounded-xl text-sm border border-solid outline-none focus:ring-2 focus:ring-violet-500/20 ${
                                         isLight ? 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400' : 'bg-[#0a0a0a] border-[#2B2B2B] text-gray-200 placeholder:text-gray-600'
                                     }`}
                                 />
@@ -228,7 +230,7 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                             <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
                                 {TAB_FILTERS.map(t => (
                                     <button key={t.id || 'all'} type="button" onClick={() => setTabFilter(t.id)} className={chipCls(tabFilter === t.id)}>
-                                        <FontAwesomeIcon icon={t.icon} className="text-[9px] opacity-70" />
+                                        <FontAwesomeIcon icon={t.icon} className="text-xs opacity-70" />
                                         {t.label}
                                     </button>
                                 ))}
@@ -237,9 +239,8 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
 
                         {/* Timeline */}
                         {loading ? (
-                            <div className={`flex flex-col items-center justify-center py-14 rounded-xl ${isLight ? 'bg-slate-50' : 'bg-[#111]'}`}>
-                                <FontAwesomeIcon icon={faSpinner} spin className={`text-lg mb-2 ${isLight ? 'text-violet-400' : 'text-violet-500'}`} />
-                                <p className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Loading activity…</p>
+                            <div className={`py-3 px-2 rounded-xl ${isLight ? 'bg-slate-50' : 'bg-[#111]'}`}>
+                                <SettingsListSkeleton isLight={isLight} rows={5} />
                             </div>
                         ) : filteredLogs.length === 0 ? (
                             <div className={`flex flex-col items-center justify-center py-14 rounded-xl border border-dashed ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#111] border-[#2B2B2B]'}`}>
@@ -249,7 +250,7 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                                 <p className={`text-sm font-medium ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                                     {search || tabFilter ? 'No matching activity' : 'No activity yet'}
                                 </p>
-                                <p className={`text-[11px] mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                <p className={`text-sm mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
                                     {search || tabFilter ? 'Try a different filter or search term' : 'Changes to your budget will appear here'}
                                 </p>
                             </div>
@@ -259,13 +260,13 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                                     {grouped.map(group => (
                                         <div key={group.label}>
                                             <div className="flex items-center gap-2 mb-3 sticky top-0 z-10 py-1 backdrop-blur-sm">
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
                                                     isLight ? 'bg-white text-slate-500 shadow-sm' : 'bg-[#141414] text-gray-400'
                                                 }`}>
                                                     {group.label}
                                                 </span>
                                                 <div className={`flex-1 h-px ${isLight ? 'bg-slate-200' : 'bg-[#2B2B2B]'}`} />
-                                                <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>{group.items.length}</span>
+                                                <span className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>{group.items.length}</span>
                                             </div>
 
                                             <div className="relative pl-4 sm:pl-5 space-y-2">
@@ -292,39 +293,39 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                                                                     : 'bg-[#141414] border-[#1f1f1f] hover:border-[#333]'
                                                             }`}>
                                                                 <div className="flex items-start gap-2.5">
-                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
+                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
                                                                         isLight ? 'bg-slate-100 text-slate-600' : 'bg-[#1a1a1a] text-gray-400'
                                                                     }`}>
                                                                         {initials}
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
-                                                                        <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
+                                                                        <p className={`text-sm leading-relaxed ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
                                                                             {log.message}
                                                                         </p>
                                                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                                                                            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-solid ${isLight ? tone.light : tone.dark}`}>
+                                                                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md border border-solid ${isLight ? tone.light : tone.dark}`}>
                                                                                 <FontAwesomeIcon icon={meta.icon} className="text-[8px]" />
                                                                                 {meta.label}
                                                                             </span>
-                                                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md capitalize ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-[#1a1a1a] text-gray-500'}`}>
+                                                                            <span className={`text-xs font-medium px-1.5 py-0.5 rounded-md capitalize ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-[#1a1a1a] text-gray-500'}`}>
                                                                                 {log.tab}
                                                                             </span>
-                                                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${isLight ? role.light : role.dark}`}>
+                                                                            <span className={`text-xs font-medium px-1.5 py-0.5 rounded-md ${isLight ? role.light : role.dark}`}>
                                                                                 {role.label}
                                                                             </span>
-                                                                            <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                            <span className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
                                                                                 {username}
                                                                             </span>
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex-shrink-0 text-right">
                                                                         <span
-                                                                            className={`text-[10px] font-medium block ${isLight ? 'text-slate-500' : 'text-gray-400'}`}
+                                                                            className={`text-sm font-medium block ${isLight ? 'text-slate-500' : 'text-gray-400'}`}
                                                                             title={new Date(log.createdAt).toLocaleString()}
                                                                         >
                                                                             {relativeTime(log.createdAt)}
                                                                         </span>
-                                                                        <span className={`text-[9px] ${isLight ? 'text-slate-300' : 'text-gray-600'}`}>
+                                                                        <span className={`text-xs ${isLight ? 'text-slate-300' : 'text-gray-600'}`}>
                                                                             {new Date(log.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                                                                         </span>
                                                                     </div>
@@ -341,7 +342,7 @@ const AuditLogPanel = ({ isLight, card, cardP, descCls }) => {
                         )}
 
                         {filteredLogs.length > 0 && (
-                            <p className={`text-[10px] text-center mt-3 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+                            <p className={`text-sm text-center mt-3 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
                                 Showing {filteredLogs.length} of {logs.length} events · newest first
                             </p>
                         )}

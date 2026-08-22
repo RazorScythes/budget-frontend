@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
     faPiggyBank, faCoins, faMoneyBillWave, faHistory, faPlus, faPen, faTrash,
     faCheck, faTimes, faSpinner, faBuildingColumns, faWallet, faArrowUp, faArrowDown,
-    faCalendarDay, faFilter, faPercent, faEye, faEyeSlash, faExchangeAlt,
+    faFilter, faPercent, faEye, faEyeSlash, faExchangeAlt, faInbox,
 } from '@fortawesome/free-solid-svg-icons'
 import { DENOMINATIONS, SAVINGS_SUB_TABS, LS_SAVINGS_SUB_TAB } from './constants'
 import { AnimateIn, ModalOverlay, SubTabBar } from './SharedComponents'
@@ -204,8 +204,8 @@ const InterestBreakdownPanel = ({ isLight, breakdown, withholdingTax, activeFreq
     const shellCls = isLight
         ? 'border-slate-200 bg-slate-50/80'
         : 'border-[#2a2a2a] bg-[#111]/60'
-    const labelCls = `text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`
-    const metaCls = `text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`
+    const labelCls = `text-sm font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`
+    const metaCls = `text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`
     const valueCls = `text-sm font-bold tabular-nums ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`
 
     if (compact) {
@@ -234,14 +234,14 @@ const InterestBreakdownPanel = ({ isLight, breakdown, withholdingTax, activeFreq
             <div className={`px-4 py-3 border-b border-solid ${isLight ? 'border-slate-200 bg-white/60' : 'border-[#222] bg-[#0e0e0e]/60'}`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                        <p className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                        <p className={`text-sm font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
                             Interest projection
                         </p>
-                        <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                        <p className={`text-sm mt-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                             Net earnings after {taxPct}% withholding
                         </p>
                     </div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/40 text-indigo-300'}`}>
+                    <span className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/40 text-indigo-300'}`}>
                         {accrualLabel}
                     </span>
                 </div>
@@ -261,7 +261,7 @@ const InterestBreakdownPanel = ({ isLight, breakdown, withholdingTax, activeFreq
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className={labelCls}>{label}</span>
                                     {isActive && (
-                                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-900/50 text-indigo-300'}`}>
+                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-900/50 text-indigo-300'}`}>
                                             Accrual
                                         </span>
                                     )}
@@ -279,7 +279,7 @@ const InterestBreakdownPanel = ({ isLight, breakdown, withholdingTax, activeFreq
             </div>
 
             {activeFrequency === 'weekly' && (
-                <p className={`px-4 py-2.5 text-xs border-t border-solid ${isLight ? 'border-slate-200 text-slate-400 bg-white/40' : 'border-[#222] text-gray-500 bg-[#0e0e0e]/40'}`}>
+                <p className={`px-4 py-2.5 text-sm border-t border-solid ${isLight ? 'border-slate-200 text-slate-400 bg-white/40' : 'border-[#222] text-gray-500 bg-[#0e0e0e]/40'}`}>
                     Weekly accrual — figures below show equivalent day, month, and year rates.
                 </p>
             )}
@@ -303,19 +303,39 @@ const DeleteConfirmModal = ({ isLight, onConfirm, onCancel, title, message }) =>
 const formatHistoryDateLabel = (dateStr) => {
     const d = new Date(dateStr)
     const today = new Date()
-    const yesterday = new Date()
-    yesterday.setDate(today.getDate() - 1)
-    const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-    if (sameDay(d, today)) return 'Today'
-    if (sameDay(d, yesterday)) return 'Yesterday'
-    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    today.setHours(0, 0, 0, 0)
+    const target = new Date(d)
+    target.setHours(0, 0, 0, 0)
+    const diffDays = Math.round((today - target) / 86400000)
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return 'This week'
+    return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 }
+
+const HISTORY_CHANGE_FILTERS = [
+    { id: 'all', label: 'All changes' },
+    { id: 'increase', label: 'Increases' },
+    { id: 'decrease', label: 'Decreases' },
+]
+
+const HISTORY_TYPE_FILTERS = [
+    { id: 'all', label: 'All types', icon: faPiggyBank },
+    { id: 'cash', label: 'Cash', icon: faWallet },
+    { id: 'bank', label: 'Bank', icon: faBuildingColumns },
+]
 
 const SavingsHistoryPanel = ({ isLight, card, inputCls, formatCurrency, savingsHistory, savingsAccounts, isViewer, onDelete }) => {
     const allEntries = savingsHistory || []
     const [accountFilter, setAccountFilter] = useState('all')
     const [categoryFilter, setCategoryFilter] = useState('all')
     const [changeFilter, setChangeFilter] = useState('all')
+
+    const titleCls = `text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`
+    const descCls = `text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-500'}`
+    const metaCls = `text-xs ${isLight ? 'text-slate-500' : 'text-gray-500'}`
+    const labelCls = `block text-xs font-medium mb-1.5 ${isLight ? 'text-slate-600' : 'text-gray-400'}`
+    const shellCls = `${card} p-5`
 
     const accountOptions = useMemo(() => {
         const names = new Set()
@@ -335,220 +355,326 @@ const SavingsHistoryPanel = ({ isLight, card, inputCls, formatCurrency, savingsH
     const hasFilters = accountFilter !== 'all' || categoryFilter !== 'all' || changeFilter !== 'all'
 
     const grouped = useMemo(() => {
+        const groups = []
         const map = new Map()
         entries.forEach(entry => {
             const label = formatHistoryDateLabel(entry.createdAt)
-            if (!map.has(label)) map.set(label, [])
-            map.get(label).push(entry)
+            if (!map.has(label)) {
+                const group = { label, items: [] }
+                map.set(label, group)
+                groups.push(group)
+            }
+            map.get(label).items.push(entry)
         })
-        return Array.from(map.entries())
+        return groups
     }, [entries])
+
+    const stats = useMemo(() => {
+        let increases = 0
+        let decreases = 0
+        const accounts = new Set()
+        allEntries.forEach(e => {
+            if (e.diffTotal > 0) increases += 1
+            else if (e.diffTotal < 0) decreases += 1
+            if (e.accountName) accounts.add(e.accountName)
+        })
+        return { total: allEntries.length, increases, decreases, accounts: accounts.size }
+    }, [allEntries])
 
     const filteredStats = useMemo(() => {
-        let up = 0
-        let down = 0
+        let increases = 0
+        let decreases = 0
         entries.forEach(e => {
-            if (e.diffTotal > 0) up += 1
-            else if (e.diffTotal < 0) down += 1
+            if (e.diffTotal > 0) increases += 1
+            else if (e.diffTotal < 0) decreases += 1
         })
-        return { up, down }
+        return { increases, decreases }
     }, [entries])
 
-    const filterFieldCls = `${inputCls} w-full !py-2 !text-xs !min-h-0`
-    const filterLabelCls = `block text-[10px] font-semibold uppercase tracking-wider mb-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`
+    const changeChipCls = (active) => `px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border border-solid ${
+        active
+            ? (isLight ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-blue-900/20 text-blue-300 border-blue-800/40')
+            : (isLight ? 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50' : 'bg-[#111] text-gray-400 border-[#2B2B2B] hover:border-[#444] hover:bg-[#161616]')
+    }`
+
+    const typeChipCls = (active) => `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border border-solid ${
+        active
+            ? (isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-900/20 text-emerald-300 border-emerald-800/40')
+            : (isLight ? 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50' : 'bg-[#111] text-gray-400 border-[#2B2B2B] hover:border-[#444] hover:bg-[#161616]')
+    }`
+
+    const badgeCls = `inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md border border-solid`
 
     if (allEntries.length === 0) {
         return (
-            <div className={`${card} text-center py-12 px-4`}>
-                <FontAwesomeIcon icon={faHistory} className={`text-2xl mb-2 ${isLight ? 'text-slate-300' : 'text-gray-600'}`} />
-                <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>No changes recorded yet.</p>
+            <div className={shellCls}>
+                <div className="flex items-center gap-2.5 mb-5">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isLight ? 'bg-blue-50' : 'bg-blue-900/20'}`}>
+                        <FontAwesomeIcon icon={faHistory} className={`text-sm ${isLight ? 'text-blue-500' : 'text-blue-400'}`} />
+                    </div>
+                    <div>
+                        <h3 className={titleCls}>Balance history</h3>
+                        <p className={descCls}>Recorded changes when you update savings accounts</p>
+                    </div>
+                </div>
+                <div className={`flex flex-col items-center justify-center py-14 rounded-xl border border-dashed ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#111] border-[#2B2B2B]'}`}>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${isLight ? 'bg-white shadow-sm' : 'bg-[#1a1a1a]'}`}>
+                        <FontAwesomeIcon icon={faInbox} className={`text-lg ${isLight ? 'text-slate-300' : 'text-gray-600'}`} />
+                    </div>
+                    <p className={`text-sm font-medium ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>No changes recorded yet</p>
+                    <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Balance updates will appear here automatically</p>
+                </div>
             </div>
         )
     }
 
     return (
-        <div className="space-y-3">
-            <div className={`${card} p-3`}>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faFilter} className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                        <span className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Filters</span>
-                    </div>
-                    {hasFilters && (
-                        <button
-                            type="button"
-                            onClick={() => { setAccountFilter('all'); setCategoryFilter('all'); setChangeFilter('all') }}
-                            className={`text-[11px] font-medium px-2 py-1 rounded-md ${isLight ? 'text-blue-600 hover:bg-blue-50' : 'text-blue-400 hover:bg-blue-500/10'}`}
-                        >
-                            Clear all
-                        </button>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <div>
-                        <label className={filterLabelCls}>Account</label>
-                        <select value={accountFilter} onChange={e => setAccountFilter(e.target.value)} className={filterFieldCls}>
-                            <option value="all">All accounts</option>
-                            {accountOptions.map(name => (
-                                <option key={name} value={name}>{name}</option>
-                            ))}
-                        </select>
+        <div className={shellCls}>
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+                <div className="flex items-center gap-2.5">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isLight ? 'bg-blue-50' : 'bg-blue-900/20'}`}>
+                        <FontAwesomeIcon icon={faHistory} className={`text-sm ${isLight ? 'text-blue-500' : 'text-blue-400'}`} />
                     </div>
                     <div>
-                        <label className={filterLabelCls}>Type</label>
-                        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className={filterFieldCls}>
-                            <option value="all">All types</option>
-                            <option value="cash">Cash</option>
-                            <option value="bank">Bank</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className={filterLabelCls}>Change</label>
-                        <select value={changeFilter} onChange={e => setChangeFilter(e.target.value)} className={filterFieldCls}>
-                            <option value="all">All changes</option>
-                            <option value="increase">Increases only</option>
-                            <option value="decrease">Decreases only</option>
-                        </select>
+                        <h3 className={titleCls}>Balance history</h3>
+                        <p className={descCls}>Track increases, decreases, and interest across your savings</p>
                     </div>
                 </div>
+                {hasFilters && (
+                    <button
+                        type="button"
+                        onClick={() => { setAccountFilter('all'); setCategoryFilter('all'); setChangeFilter('all') }}
+                        className={`text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all ${isLight ? 'text-blue-600 hover:bg-blue-50' : 'text-blue-400 hover:bg-blue-500/10'}`}
+                    >
+                        Clear filters
+                    </button>
+                )}
+            </div>
 
-                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-solid text-[10px] ${isLight ? 'border-slate-100 text-slate-400' : 'border-[#1f1f1f] text-gray-500'}`}>
-                    <span>Showing <span className={`font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{entries.length}</span> of {allEntries.length}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                {[
+                    { label: 'Total changes', value: stats.total, accent: isLight ? 'text-blue-600' : 'text-blue-400' },
+                    { label: 'Increases', value: stats.increases, accent: isLight ? 'text-emerald-600' : 'text-emerald-400' },
+                    { label: 'Decreases', value: stats.decreases, accent: isLight ? 'text-red-500' : 'text-red-400' },
+                    { label: 'Accounts', value: stats.accounts, accent: isLight ? 'text-slate-700' : 'text-gray-200' },
+                ].map((s, i) => (
+                    <div key={i} className={`rounded-xl px-3 py-2.5 border border-solid ${isLight ? 'bg-slate-50 border-slate-100' : 'bg-[#111] border-[#1f1f1f]'}`}>
+                        <p className={`text-xs uppercase tracking-wider font-medium ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.label}</p>
+                        <p className={`text-lg font-bold mt-0.5 ${s.accent}`}>{s.value}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="space-y-3 mb-4">
+                <div>
+                    <label className={labelCls}>Account</label>
+                    <select
+                        value={accountFilter}
+                        onChange={e => setAccountFilter(e.target.value)}
+                        className={`${inputCls} w-full !py-2 !text-xs !min-h-0`}
+                    >
+                        <option value="all">All accounts</option>
+                        {accountOptions.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <p className={`${labelCls} mb-2`}>Change</p>
+                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+                        {HISTORY_CHANGE_FILTERS.map(f => (
+                            <button key={f.id} type="button" onClick={() => setChangeFilter(f.id)} className={changeChipCls(changeFilter === f.id)}>
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <p className={`${labelCls} mb-2`}>Type</p>
+                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+                        {HISTORY_TYPE_FILTERS.map(f => (
+                            <button key={f.id} type="button" onClick={() => setCategoryFilter(f.id)} className={typeChipCls(categoryFilter === f.id)}>
+                                <FontAwesomeIcon icon={f.icon} className="text-xs opacity-70" />
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <p className={metaCls}>
+                    Showing <span className={`font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>{entries.length}</span> of {allEntries.length}
                     {entries.length > 0 && (
                         <>
-                            <span>·</span>
-                            <span className={isLight ? 'text-emerald-600' : 'text-emerald-400'}>{filteredStats.up} increase{filteredStats.up !== 1 ? 's' : ''}</span>
-                            <span>·</span>
-                            <span className={isLight ? 'text-red-500' : 'text-red-400'}>{filteredStats.down} decrease{filteredStats.down !== 1 ? 's' : ''}</span>
+                            {' · '}
+                            <span className={isLight ? 'text-emerald-600' : 'text-emerald-400'}>{filteredStats.increases} increase{filteredStats.increases !== 1 ? 's' : ''}</span>
+                            {' · '}
+                            <span className={isLight ? 'text-red-500' : 'text-red-400'}>{filteredStats.decreases} decrease{filteredStats.decreases !== 1 ? 's' : ''}</span>
                         </>
                     )}
-                </div>
+                </p>
             </div>
 
             {entries.length === 0 ? (
-                <div className={`${card} text-center py-10 px-4`}>
-                    <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>No entries match your filters.</p>
+                <div className={`flex flex-col items-center justify-center py-14 rounded-xl border border-dashed ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#111] border-[#2B2B2B]'}`}>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${isLight ? 'bg-white shadow-sm' : 'bg-[#1a1a1a]'}`}>
+                        <FontAwesomeIcon icon={faFilter} className={`text-lg ${isLight ? 'text-slate-300' : 'text-gray-600'}`} />
+                    </div>
+                    <p className={`text-sm font-medium ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>No matching entries</p>
+                    <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Try adjusting your filters</p>
                 </div>
             ) : (
-                grouped.map(([dateLabel, dayEntries]) => (
-                    <div key={dateLabel}>
-                        <div className="flex items-center gap-2 mb-2 px-0.5">
-                            <FontAwesomeIcon icon={faCalendarDay} className={`text-[9px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                            <p className={`text-[10px] font-semibold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{dateLabel}</p>
-                            <div className={`flex-1 h-px ${isLight ? 'bg-slate-200' : 'bg-[#222]'}`} />
-                        </div>
+                <div className={`max-h-[32rem] overflow-y-auto rounded-xl border border-solid pr-1 ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-[#1f1f1f] bg-[#0a0a0a]/50'}`}>
+                    <div className="p-3 sm:p-4 space-y-5">
+                        {grouped.map(group => (
+                            <div key={group.label}>
+                                <div className="flex items-center gap-2 mb-3 sticky top-0 z-10 py-1 backdrop-blur-sm">
+                                    <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                        isLight ? 'bg-white text-slate-500 shadow-sm' : 'bg-[#141414] text-gray-400'
+                                    }`}>
+                                        {group.label}
+                                    </span>
+                                    <div className={`flex-1 h-px ${isLight ? 'bg-slate-200' : 'bg-[#2B2B2B]'}`} />
+                                    <span className={metaCls}>{group.items.length}</span>
+                                </div>
 
-                        <div className="space-y-2">
-                            {dayEntries.map((entry, idx) => {
-                                const isUp = entry.diffTotal > 0
-                                const isDown = entry.diffTotal < 0
-                                const isBank = entry.category === 'bank'
-                                const isInterest = entry.source === 'interest'
-                                const time = new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                                <div className="relative pl-4 sm:pl-5 space-y-2">
+                                    <div className={`absolute left-[7px] sm:left-[9px] top-1 bottom-1 w-px ${isLight ? 'bg-slate-200' : 'bg-[#2B2B2B]'}`} />
 
-                                return (
-                                    <div
-                                        key={entry._id || idx}
-                                        className={`${card} overflow-hidden ${isLight ? 'hover:bg-slate-50/50' : 'hover:bg-white/[0.02]'}`}
-                                    >
-                                        <div className={`border-l-2 ${isUp ? 'border-emerald-400' : isDown ? 'border-red-400' : (isLight ? 'border-slate-300' : 'border-gray-600')}`}>
-                                            <div className="p-3">
-                                                <div className="flex items-start justify-between gap-2 mb-2">
-                                                    <div className="flex items-start gap-2 min-w-0">
-                                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                    {group.items.map((entry, idx) => {
+                                        const isUp = entry.diffTotal > 0
+                                        const isDown = entry.diffTotal < 0
+                                        const isBank = entry.category === 'bank'
+                                        const isInterest = entry.source === 'interest'
+                                        const time = new Date(entry.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                                        const dotCls = isUp ? 'bg-emerald-500' : isDown ? 'bg-red-500' : (isLight ? 'bg-slate-400' : 'bg-gray-500')
+
+                                        return (
+                                            <div key={entry._id || idx} className="relative flex gap-3 group">
+                                                <div className={`absolute -left-4 sm:-left-5 top-3.5 w-[15px] h-[15px] rounded-full border-2 border-solid flex items-center justify-center z-[1] ${
+                                                    isLight ? 'bg-white border-slate-100' : 'bg-[#141414] border-[#2B2B2B]'
+                                                }`}>
+                                                    <div className={`w-2 h-2 rounded-full ${dotCls}`} />
+                                                </div>
+
+                                                <div className={`flex-1 min-w-0 rounded-xl border border-solid p-3 transition-colors ${
+                                                    isLight
+                                                        ? 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                                                        : 'bg-[#141414] border-[#1f1f1f] hover:border-[#333]'
+                                                }`}>
+                                                    <div className="flex items-start gap-2.5">
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                                             isBank
                                                                 ? (isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-900/30 text-indigo-400')
                                                                 : (isLight ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-900/30 text-emerald-400')
                                                         }`}>
-                                                            <FontAwesomeIcon icon={isBank ? faBuildingColumns : faWallet} className="text-[10px]" />
+                                                            <FontAwesomeIcon icon={isBank ? faBuildingColumns : faWallet} className="text-xs" />
                                                         </div>
-                                                        <div className="min-w-0">
-                                                            <p className={`text-xs font-semibold truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>{entry.accountName || 'Savings'}</p>
-                                                            <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                                {time} · {isBank ? 'Bank' : 'Cash'}
+
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <p className={`text-sm font-semibold truncate ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>
+                                                                    {entry.accountName || 'Savings'}
+                                                                </p>
+                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                    <span className={`text-xs font-semibold tabular-nums ${
+                                                                        isUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400')
+                                                                            : isDown ? (isLight ? 'text-red-600' : 'text-red-400')
+                                                                                : (isLight ? 'text-slate-500' : 'text-gray-400')
+                                                                    }`}>
+                                                                        {isUp ? '+' : ''}{formatCurrency(entry.diffTotal)}
+                                                                    </span>
+                                                                    {!isViewer && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => onDelete(entry._id)}
+                                                                            title="Delete entry"
+                                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ${isLight ? 'hover:bg-red-50 text-red-400' : 'hover:bg-red-900/20 text-red-400'}`}
+                                                                        >
+                                                                            <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                                                <span className={`${badgeCls} ${isLight ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-[#1a1a1a] text-gray-400 border-[#2B2B2B]'}`}>
+                                                                    {time}
+                                                                </span>
+                                                                <span className={`${badgeCls} ${
+                                                                    isBank
+                                                                        ? (isLight ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-indigo-900/20 text-indigo-400 border-indigo-800/40')
+                                                                        : (isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-900/20 text-emerald-400 border-emerald-800/40')
+                                                                }`}>
+                                                                    {isBank ? 'Bank' : 'Cash'}
+                                                                </span>
                                                                 {isInterest && (
-                                                                    <span className={`ml-1.5 font-semibold ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>· Interest</span>
+                                                                    <span className={`${badgeCls} ${isLight ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-900/20 text-amber-400 border-amber-800/40'}`}>
+                                                                        Interest
+                                                                    </span>
                                                                 )}
-                                                            </p>
+                                                            </div>
+
+                                                            {entry.note && (
+                                                                <p className={`text-xs mt-2 px-2 py-1.5 rounded-lg ${isLight ? 'bg-amber-50 text-amber-800' : 'bg-amber-900/20 text-amber-300'}`}>
+                                                                    {entry.note}
+                                                                </p>
+                                                            )}
+
+                                                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                                                <span className={`${badgeCls} ${isLight ? 'bg-slate-50 text-slate-600 border-slate-100' : 'bg-[#111] text-gray-300 border-[#1f1f1f]'}`}>
+                                                                    Before {formatCurrency(entry.previousTotal)}
+                                                                </span>
+                                                                <span className={metaCls}>→</span>
+                                                                <span className={`${badgeCls} ${isLight ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-blue-900/20 text-blue-300 border-blue-800/40'}`}>
+                                                                    After {formatCurrency(entry.newTotal)}
+                                                                </span>
+                                                            </div>
+
+                                                            {entry.changes?.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                                    {entry.changes.map((c, ci) => (
+                                                                        isBank || c.denomination === 0 ? (
+                                                                            <span
+                                                                                key={ci}
+                                                                                className={`${badgeCls} ${
+                                                                                    c.diff >= 0
+                                                                                        ? (isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-900/20 text-emerald-400 border-emerald-800/40')
+                                                                                        : (isLight ? 'bg-red-50 text-red-700 border-red-200' : 'bg-red-900/20 text-red-400 border-red-800/40')
+                                                                                }`}
+                                                                            >
+                                                                                <FontAwesomeIcon icon={c.diff >= 0 ? faArrowUp : faArrowDown} className="text-[8px]" />
+                                                                                {c.diff >= 0 ? '+' : ''}{formatCurrency(c.diff)}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span
+                                                                                key={ci}
+                                                                                className={`${badgeCls} ${
+                                                                                    c.diff > 0
+                                                                                        ? (isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-900/20 text-emerald-400 border-emerald-800/40')
+                                                                                        : (isLight ? 'bg-red-50 text-red-700 border-red-200' : 'bg-red-900/20 text-red-400 border-red-800/40')
+                                                                                }`}
+                                                                            >
+                                                                                <FontAwesomeIcon icon={c.diff > 0 ? faArrowUp : faArrowDown} className="text-[8px]" />
+                                                                                ₱{c.denomination} {c.diff > 0 ? '+' : ''}{c.diff}
+                                                                                <span className={`hidden sm:inline ${metaCls}`}>({c.previous}→{c.current})</span>
+                                                                            </span>
+                                                                        )
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        <span className={`text-xs font-bold tabular-nums ${
-                                                            isUp ? (isLight ? 'text-emerald-600' : 'text-emerald-400')
-                                                                : isDown ? (isLight ? 'text-red-600' : 'text-red-400')
-                                                                    : (isLight ? 'text-slate-500' : 'text-gray-400')
-                                                        }`}>
-                                                            {isUp ? '+' : ''}{formatCurrency(entry.diffTotal)}
-                                                        </span>
-                                                        {!isViewer && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => onDelete(entry._id)}
-                                                                className={`w-6 h-6 rounded-md flex items-center justify-center ${isLight ? 'hover:bg-red-50 text-red-400' : 'hover:bg-red-900/20 text-red-400'}`}
-                                                            >
-                                                                <FontAwesomeIcon icon={faTrash} className="text-[9px]" />
-                                                            </button>
-                                                        )}
-                                                    </div>
                                                 </div>
-
-                                                {entry.note && (
-                                                    <p className={`text-[10px] mb-2 px-2 py-1.5 rounded-md ${isLight ? 'bg-amber-50 text-amber-800' : 'bg-amber-900/20 text-amber-300'}`}>
-                                                        {entry.note}
-                                                    </p>
-                                                )}
-
-                                                <div className="flex items-center gap-2 text-[10px] mb-2">
-                                                    <span className={`px-2 py-1 rounded-md ${isLight ? 'bg-slate-50 text-slate-600' : 'bg-[#111] text-gray-300'}`}>
-                                                        Before {formatCurrency(entry.previousTotal)}
-                                                    </span>
-                                                    <span className={isLight ? 'text-slate-300' : 'text-gray-600'}>→</span>
-                                                    <span className={`px-2 py-1 rounded-md ${isLight ? 'bg-blue-50 text-blue-700' : 'bg-blue-900/20 text-blue-300'}`}>
-                                                        After {formatCurrency(entry.newTotal)}
-                                                    </span>
-                                                </div>
-
-                                                {entry.changes?.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {entry.changes.map((c, ci) => (
-                                                            isBank || c.denomination === 0 ? (
-                                                                <span
-                                                                    key={ci}
-                                                                    className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md ${
-                                                                        c.diff >= 0
-                                                                            ? (isLight ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-900/20 text-emerald-400')
-                                                                            : (isLight ? 'bg-red-50 text-red-700' : 'bg-red-900/20 text-red-400')
-                                                                    }`}
-                                                                >
-                                                                    <FontAwesomeIcon icon={c.diff >= 0 ? faArrowUp : faArrowDown} className="text-[7px]" />
-                                                                    {c.diff >= 0 ? '+' : ''}{formatCurrency(c.diff)}
-                                                                </span>
-                                                            ) : (
-                                                                <span
-                                                                    key={ci}
-                                                                    className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md ${
-                                                                        c.diff > 0
-                                                                            ? (isLight ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-900/20 text-emerald-400')
-                                                                            : (isLight ? 'bg-red-50 text-red-700' : 'bg-red-900/20 text-red-400')
-                                                                    }`}
-                                                                >
-                                                                    <FontAwesomeIcon icon={c.diff > 0 ? faArrowUp : faArrowDown} className="text-[7px]" />
-                                                                    ₱{c.denomination} {c.diff > 0 ? '+' : ''}{c.diff}
-                                                                    <span className="opacity-50 hidden sm:inline">({c.previous}→{c.current})</span>
-                                                                </span>
-                                                            )
-                                                        ))}
-                                                    </div>
-                                                )}
                                             </div>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                ))
+                </div>
             )}
         </div>
     )
@@ -609,28 +735,32 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
     return (
         <ModalOverlay isLight={isLight} onClose={onClose}>
             <div className={`relative w-full max-w-lg rounded-2xl border border-solid shadow-2xl overflow-hidden ${isLight ? 'bg-white border-slate-200' : 'bg-[#0e0e0e] border-[#2B2B2B]'}`} onClick={e => e.stopPropagation()}>
-                <div className={`px-5 pt-5 pb-4 border-b border-solid ${isLight ? 'border-slate-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50/40' : 'border-[#1f1f1f] bg-gradient-to-br from-blue-950/20 via-[#0e0e0e] to-indigo-950/10'}`}>
-                    <button type="button" onClick={onClose} className={`absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center ${isLight ? 'hover:bg-white/80 text-slate-400' : 'hover:bg-[#1a1a1a] text-gray-500'}`}>
-                        <FontAwesomeIcon icon={faTimes} className="text-sm" />
-                    </button>
-                    <h3 className={`text-base font-bold pr-8 ${isLight ? 'text-slate-800' : 'text-white'}`}>
-                        {isEdit ? 'Update savings' : 'Add savings'}
-                    </h3>
-                    <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Choose cash for breakdown or bank for total balance only</p>
+                <div className={`px-6 pt-5 pb-4 border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <h3 className={`text-2xl font-semibold leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
+                                {isEdit ? 'Update savings' : 'Add savings'}
+                            </h3>
+                            <p className={`text-sm mt-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Choose cash for a bill breakdown or bank for a total balance</p>
+                        </div>
+                        <button type="button" onClick={onClose} className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-[#1f1f1f] text-gray-500'}`}>
+                            <FontAwesomeIcon icon={faTimes} className="text-sm" />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="px-5 py-4 space-y-4 max-h-[min(70vh,520px)] overflow-y-auto">
+                <div className="px-6 py-5 space-y-4 max-h-[min(62vh,460px)] overflow-y-auto">
                     <div>
-                        <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Name</label>
+                        <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Name</label>
                         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Emergency Fund, BPI Savings" className={inputCls} disabled={account?.isDefault && isEdit} />
                         {account?.isDefault && isEdit && (
-                            <p className={`text-[10px] mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Default Personal Savings name cannot be changed</p>
+                            <p className={`text-sm mt-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Default Personal Savings name cannot be changed</p>
                         )}
                     </div>
 
                     {!isEdit && (
                         <div>
-                            <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Category</label>
+                            <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Category</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
                                     { id: 'cash', label: 'Cash', icon: faWallet, desc: 'Bill & coin breakdown' },
@@ -648,7 +778,7 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                                     >
                                         <FontAwesomeIcon icon={opt.icon} className={`text-sm mb-1.5 ${category === opt.id ? 'text-blue-500' : (isLight ? 'text-slate-400' : 'text-gray-500')}`} />
                                         <p className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{opt.label}</p>
-                                        <p className={`text-[10px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{opt.desc}</p>
+                                        <p className={`text-sm mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{opt.desc}</p>
                                     </button>
                                 ))}
                             </div>
@@ -658,7 +788,7 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                     {showBankFields ? (
                         <div className="space-y-4">
                             <div>
-                                <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Total balance</label>
+                                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Total balance</label>
                                 <input type="number" min="0" step="0.01" value={bankTotal} onChange={e => setBankTotal(e.target.value)} placeholder="0.00" className={`${inputCls} ${noSpinner}`} />
                             </div>
 
@@ -666,9 +796,9 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2">
                                         <FontAwesomeIcon icon={faPercent} className={`text-xs ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
-                                        <span className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>Interest settings</span>
+                                        <span className={`text-sm font-semibold ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>Interest settings</span>
                                     </div>
-                                    <label className={`flex items-center gap-2 text-xs cursor-pointer ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
+                                    <label className={`flex items-center gap-2 text-sm cursor-pointer ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
                                         <input
                                             type="checkbox"
                                             checked={interestEnabled}
@@ -681,24 +811,24 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Annual rate (%)</label>
+                                        <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Annual rate (%)</label>
                                         <input type="number" min="0" step="0.01" value={interestRate} onChange={e => setInterestRate(e.target.value)} placeholder="e.g. 3.25" className={`${inputCls} ${noSpinner}`} />
                                     </div>
                                     <div>
-                                        <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Withholding tax (%)</label>
+                                        <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Withholding tax (%)</label>
                                         <input type="number" min="0" max="100" step="0.01" value={withholdingTax} onChange={e => setWithholdingTax(e.target.value)} placeholder="20" className={`${inputCls} ${noSpinner}`} />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Accrual frequency</label>
+                                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Accrual frequency</label>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {INTEREST_FREQUENCY_OPTIONS.map(opt => (
                                             <button
                                                 key={opt.id}
                                                 type="button"
                                                 onClick={() => setInterestFrequency(opt.id)}
-                                                className={`px-3 py-2 rounded-lg text-xs font-semibold border border-solid transition-all ${
+                                                className={`px-3 py-2 rounded-lg text-sm font-medium border border-solid transition-all ${
                                                     interestFrequency === opt.id
                                                         ? (isLight ? 'border-indigo-300 bg-indigo-100 text-indigo-700' : 'border-indigo-700 bg-indigo-900/30 text-indigo-300')
                                                         : (isLight ? 'border-slate-200 text-slate-500 hover:border-slate-300' : 'border-[#2a2a2a] text-gray-500 hover:border-[#333]')
@@ -723,16 +853,16 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                     ) : (
                         <div className="space-y-3">
                             <div className={`flex items-center justify-between px-3 py-2 rounded-xl ${isLight ? 'bg-slate-50 border border-slate-200' : 'bg-[#111] border border-[#252525]'}`}>
-                                <span className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Cash total</span>
-                                <span className={`text-sm font-bold ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>₱{cashTotal.toLocaleString()}</span>
+                                <span className={`text-sm font-medium ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Cash total</span>
+                                <span className={`text-sm font-semibold ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>₱{cashTotal.toLocaleString()}</span>
                             </div>
                             <div className={`rounded-xl border border-solid overflow-hidden ${isLight ? 'border-slate-200' : 'border-[#252525]'}`}>
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className={isLight ? 'bg-slate-50 text-slate-500' : 'bg-[#111] text-gray-500'}>
-                                            <th className="text-left px-3 py-2 text-[10px] uppercase font-semibold">Denom</th>
-                                            <th className="text-center px-2 py-2 text-[10px] uppercase font-semibold">Qty</th>
-                                            <th className="text-right px-3 py-2 text-[10px] uppercase font-semibold">Amount</th>
+                                            <th className="text-left px-3 py-2.5 text-sm font-medium">Denom</th>
+                                            <th className="text-center px-2 py-2.5 text-sm font-medium">Qty</th>
+                                            <th className="text-right px-3 py-2.5 text-sm font-medium">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -744,7 +874,7 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                                                     <td className="px-3 py-2">
                                                         <div className="flex items-center gap-2">
                                                             <FontAwesomeIcon icon={d.type === 'bill' ? faMoneyBillWave : faCoins} className={`text-[10px] ${d.type === 'bill' ? 'text-emerald-500' : 'text-amber-500'}`} />
-                                                            <span className={`text-xs font-medium ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{d.label}</span>
+                                                            <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{d.label}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-2 py-1.5">
@@ -754,10 +884,10 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                                                             value={counts[d.value]}
                                                             onChange={e => setCounts(prev => ({ ...prev, [d.value]: e.target.value === '' ? '' : e.target.value }))}
                                                             placeholder="0"
-                                                            className={`${inputCls} w-16 text-center !py-1 text-xs ${noSpinner}`}
+                                                            className={`${inputCls} w-16 text-center !py-1 text-sm ${noSpinner}`}
                                                         />
                                                     </td>
-                                                    <td className={`px-3 py-2 text-right text-xs font-semibold tabular-nums ${amt > 0 ? (isLight ? 'text-blue-600' : 'text-blue-400') : (isLight ? 'text-slate-300' : 'text-gray-600')}`}>
+                                                    <td className={`px-3 py-2 text-right text-sm font-semibold tabular-nums ${amt > 0 ? (isLight ? 'text-blue-600' : 'text-blue-400') : (isLight ? 'text-slate-300' : 'text-gray-600')}`}>
                                                         ₱{amt.toLocaleString()}
                                                     </td>
                                                 </tr>
@@ -766,7 +896,7 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="grid grid-cols-2 gap-2 text-[10px]">
+                            <div className="grid grid-cols-2 gap-2 text-sm">
                                 <div className={`px-2 py-1.5 rounded-lg ${isLight ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-900/20 text-emerald-400'}`}>
                                     Bills: ₱{billsDenoms.reduce((s, d) => s + ((counts[d.value] === '' ? 0 : parseInt(counts[d.value], 10) || 0) * d.value), 0).toLocaleString()}
                                 </div>
@@ -778,7 +908,7 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
                     )}
                 </div>
 
-                <div className={`px-5 py-4 border-t border-solid flex justify-end gap-2 ${isLight ? 'border-slate-100 bg-slate-50/80' : 'border-[#1f1f1f] bg-[#0a0a0a]/80'}`}>
+                <div className={`px-6 py-4 border-t border-solid flex justify-end gap-2.5 ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
                     <button type="button" onClick={onClose} className={`px-4 py-2 rounded-xl text-sm font-medium ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-[#1f1f1f] text-gray-300 hover:bg-[#2a2a2a]'}`}>Cancel</button>
                     <button type="button" onClick={handleSubmit} disabled={!name.trim() || saving} className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50 ${isLight ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
                         {saving ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : <FontAwesomeIcon icon={faCheck} className="text-xs" />}
@@ -790,7 +920,7 @@ const SavingsFormModal = ({ isLight, inputCls, account, onClose, onSave, saving 
     )
 }
 
-const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispatch, savingsAccounts, savingsHistory, isLoading, isViewer, globalShowBalances, templateStyles }) => {
+const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispatch, savingsAccounts, savingsHistory, isLoading, isViewer, templateStyles }) => {
     const accounts = Array.isArray(savingsAccounts) ? savingsAccounts : []
     const [subTab, setSubTab] = useState(() => {
         try {
@@ -815,10 +945,6 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
     }, [subTab])
 
     useEffect(() => {
-        if (globalShowBalances !== undefined) setShowSummaryBalances(globalShowBalances)
-    }, [globalShowBalances])
-
-    useEffect(() => {
         try {
             localStorage.setItem(LS_SUMMARY_BALANCES, String(showSummaryBalances))
         } catch { /* ignore */ }
@@ -835,13 +961,12 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
     const maskedBalancePositive = useMemo(() => `+${currencySymbol} ----`, [currencySymbol])
 
     const isAccountBalanceVisible = useCallback((accountId) => {
-        if (globalShowBalances === false) return false
         if (!accountId) return true
         if (Object.prototype.hasOwnProperty.call(accountBalancesVisible, accountId)) {
             return accountBalancesVisible[accountId]
         }
         return true
-    }, [accountBalancesVisible, globalShowBalances])
+    }, [accountBalancesVisible])
 
     const toggleAccountBalance = useCallback((accountId) => {
         if (!accountId) return
@@ -960,7 +1085,7 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
 
     if (isLoading && accounts.length === 0) {
         return (
-            <div className="space-y-4">
+            <div className="page-type-scale space-y-4">
                 <div className={`${card} p-5`}>
                     <div className={`h-4 w-32 mb-4 ${pulse}`} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -972,7 +1097,7 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
     }
 
     return (
-        <div className="space-y-4">
+        <div className="page-type-scale space-y-4">
             <AnimateIn delay={0}>
                 <div className="space-y-3">
                     <SubTabBar
@@ -990,7 +1115,7 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                         ) : null}
                     />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <p className={`text-[11px] leading-relaxed px-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                        <p className={`text-xs leading-relaxed px-0.5 ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
                             {tabDetail}
                         </p>
                         {subTab === 'accounts' && (
@@ -1323,35 +1448,52 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
             )}
 
             {showTransfer && (
-                <ModalOverlay onClose={() => setShowTransfer(false)}>
-                    <div className={`w-full max-w-md rounded-2xl p-5 ${isLight ? 'bg-white' : 'bg-[#141414] border border-[#2B2B2B]'}`}>
-                        <h3 className={`text-sm font-semibold mb-4 ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Transfer between accounts</h3>
-                        <div className="space-y-3">
+                <ModalOverlay isLight={isLight} onClose={() => setShowTransfer(false)}>
+                    <div
+                        className={`relative w-full max-w-lg rounded-2xl border border-solid shadow-2xl overflow-hidden ${isLight ? 'bg-white border-slate-200' : 'bg-[#0e0e0e] border-[#2B2B2B]'}`}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className={`px-6 pt-5 pb-4 border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <h3 className={`text-2xl font-semibold leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>Transfer</h3>
+                                    <p className={`text-sm mt-1.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Move money between savings accounts</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTransfer(false)}
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-[#1f1f1f] text-gray-500'}`}
+                                >
+                                    <FontAwesomeIcon icon={faTimes} className="text-sm" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="px-6 py-5 space-y-4">
                             <div>
-                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>From</label>
+                                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>From</label>
                                 <select className={`${inputCls} w-full`} value={transferForm.fromAccountId} onChange={e => setTransferForm(f => ({ ...f, fromAccountId: e.target.value }))}>
                                     <option value="">Select account</option>
                                     {accounts.map(a => <option key={a._id} value={a._id}>{a.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>To</label>
+                                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>To</label>
                                 <select className={`${inputCls} w-full`} value={transferForm.toAccountId} onChange={e => setTransferForm(f => ({ ...f, toAccountId: e.target.value }))}>
                                     <option value="">Select account</option>
                                     {accounts.filter(a => a._id !== transferForm.fromAccountId).map(a => <option key={a._id} value={a._id}>{a.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Amount</label>
+                                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Amount</label>
                                 <input type="number" min="0" step="0.01" className={inputCls} value={transferForm.amount} onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))} />
                             </div>
                             <div>
-                                <label className={`block text-xs mb-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Note (optional)</label>
+                                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>Note (optional)</label>
                                 <input type="text" className={inputCls} value={transferForm.note} onChange={e => setTransferForm(f => ({ ...f, note: e.target.value }))} />
                             </div>
                         </div>
-                        <div className="flex justify-end gap-2 mt-4">
-                            <button type="button" onClick={() => setShowTransfer(false)} className={`px-4 py-2 rounded-lg text-sm ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-[#1f1f1f] text-gray-300'}`}>Cancel</button>
+                        <div className={`px-6 py-4 border-t border-solid flex justify-end gap-2.5 ${isLight ? 'border-slate-100' : 'border-[#1f1f1f]'}`}>
+                            <button type="button" onClick={() => setShowTransfer(false)} className={`px-4 py-2 rounded-xl text-sm font-medium ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-[#1f1f1f] text-gray-300 hover:bg-[#2a2a2a]'}`}>Cancel</button>
                             <button
                                 type="button"
                                 disabled={!transferForm.fromAccountId || !transferForm.toAccountId || !transferForm.amount}
@@ -1366,7 +1508,7 @@ const SavingsTab = React.memo(({ isLight, card, inputCls, formatCurrency, dispat
                                     setShowTransfer(false)
                                     setTransferForm({ fromAccountId: '', toAccountId: '', amount: '', note: '' })
                                 }}
-                                className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${isLight ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-600 hover:bg-violet-500'} disabled:opacity-40`}
+                                className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40"
                             >
                                 Transfer
                             </button>

@@ -9,13 +9,32 @@ const initialState = {
     message             : '',
     verificationStatus  : '',
     isLoading           : false,
-    data                : {}
+    data                : {},
+    pending2FA          : false,
+    pendingToken        : '',
 }
 
-const setToken = (token) => {
+const persistProfile = (result) => {
+    if (!result) return
+    localStorage.setItem('profile', JSON.stringify({ ...result }));
+    localStorage.setItem('avatar', JSON.stringify(result?.avatar));
+}
+
+const setLegacyToken = (token) => {
+    if (!token) return
     const decoded = jwtDecode(token);
     const maxAgeMs = decoded.exp * 1000 - Date.now()
-    cookies.set('token', token, { path: '/', maxAge: Math.max(maxAgeMs / 1000, 0) });
+    cookies.set('token', token, { path: '/', maxAge: Math.max(maxAgeMs / 1000, 0), sameSite: 'lax' });
+}
+
+const completeAuth = (state, payload) => {
+    if (payload?.token) setLegacyToken(payload.token)
+    if (payload?.result) persistProfile(payload.result)
+    state.data = payload || {}
+    state.error = ''
+    state.isLoading = false
+    state.pending2FA = false
+    state.pendingToken = ''
 }
 
 export const login = createAsyncThunk('user/login', async (form, thunkAPI) => {
@@ -32,6 +51,16 @@ export const login = createAsyncThunk('user/login', async (form, thunkAPI) => {
         };
     }
 });
+
+export const verifyTwoFactorLogin = createAsyncThunk('user/verifyTwoFactorLogin', async (form, thunkAPI) => {
+    try {
+        const response = await endpoint.verifyTwoFactorLogin(form)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ message: 'Two-factor verification failed' })
+    }
+})
 
 export const register = createAsyncThunk('user/register', async (form, thunkAPI) => {
     try {
@@ -56,11 +85,18 @@ export const googleLogin = createAsyncThunk('user/googleLogin', async (form, thu
             return thunkAPI.rejectWithValue(err.response.data);
 
         return thunkAPI.rejectWithValue({
-            variant: 'danger',
             message: "There was a problem with the server."
         });
     }
 });
+
+export const logoutUser = createAsyncThunk('user/logoutUser', async () => {
+    try {
+        await endpoint.logoutUser()
+    } catch {
+        /* clear local state even if API fails */
+    }
+})
 
 export const forgotPassword = createAsyncThunk('user/forgotPassword', async (form, thunkAPI) => {
     try {
@@ -101,30 +137,37 @@ export const authSlice = createSlice({
             state.error           = ''
         }),
         builder.addCase(login.fulfilled, (state, action) => {
-            setToken(action.payload.data.token);
-            localStorage.setItem('profile', JSON.stringify({ ...action.payload?.data.result }));
-            localStorage.setItem('avatar', JSON.stringify(action.payload?.data.result?.avatar));
-
-            state.data            = action.payload.data
-            state.error           = ''
-            state.isLoading       = false
+            const payload = action.payload.data
+            if (payload.requiresTwoFactor) {
+                state.pending2FA = true
+                state.pendingToken = payload.pendingToken
+                state.data = payload
+                state.isLoading = false
+                return
+            }
+            completeAuth(state, payload)
         }),
         builder.addCase(login.rejected, (state, action) => {
             state.error           = action.payload
             state.isLoading       = false
+        }),
+        builder.addCase(verifyTwoFactorLogin.pending, (state) => {
+            state.isLoading = true
+            state.error = ''
+        }),
+        builder.addCase(verifyTwoFactorLogin.fulfilled, (state, action) => {
+            completeAuth(state, action.payload.data)
+        }),
+        builder.addCase(verifyTwoFactorLogin.rejected, (state, action) => {
+            state.error = action.payload
+            state.isLoading = false
         }),
         builder.addCase(register.pending, (state) => {
             state.isLoading       = true
             state.error           = ''
         }),
         builder.addCase(register.fulfilled, (state, action) => {
-            setToken(action.payload.data.token);
-            localStorage.setItem('profile', JSON.stringify({ ...action.payload?.data.result }));
-            localStorage.setItem('avatar', JSON.stringify(action.payload?.data.result?.avatar));
-
-            state.data            = action.payload.data
-            state.error           = ''
-            state.isLoading       = false
+            completeAuth(state, action.payload.data)
         }),
         builder.addCase(register.rejected, (state, action) => {
             state.error           = action.payload
@@ -134,17 +177,23 @@ export const authSlice = createSlice({
             state.isLoading       = true
         }),
         builder.addCase(googleLogin.fulfilled, (state, action) => {
-            setToken(action.payload.data.token);
-            localStorage.setItem('profile', JSON.stringify({ ...action.payload?.data.result }));
-            localStorage.setItem('avatar', JSON.stringify(action.payload?.data.result?.avatar));
-
-            state.data            = action.payload.data
-            state.error           = ''
-            state.isLoading       = false
+            completeAuth(state, action.payload.data)
         }),
         builder.addCase(googleLogin.rejected, (state, action) => {
             state.error           = action.payload
             state.isLoading       = false
+        }),
+        builder.addCase(logoutUser.fulfilled, (state) => {
+            cookies.remove('token')
+            localStorage.removeItem('profile')
+            localStorage.removeItem('avatar')
+            state.error = ''
+            state.message = ''
+            state.verificationStatus = ''
+            state.isLoading = false
+            state.data = {}
+            state.pending2FA = false
+            state.pendingToken = ''
         }),
         builder.addCase(forgotPassword.pending, (state) => {
             state.isLoading = true
@@ -189,12 +238,15 @@ export const authSlice = createSlice({
         logout: (state) => {
             cookies.remove('token')
             localStorage.removeItem('profile')
+            localStorage.removeItem('avatar')
 
             state.error         = ''
             state.message       = ''
             state.verificationStatus = ''
             state.isLoading     = false
             state.data          = {}
+            state.pending2FA    = false
+            state.pendingToken  = ''
         },
         clearAuthMessage: (state) => {
             state.error = ''

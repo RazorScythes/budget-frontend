@@ -1,5 +1,19 @@
 import * as api from '../endpoint'
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import {
+    loadCachedAppearanceSettings,
+    saveCachedAppearanceSettings,
+    mergeAppearanceSettings,
+    budgetSettingsEqual,
+} from '../utils/appearanceCache'
+
+const applyBudgetSettings = (state, settings) => {
+    if (!settings) return
+    const next = mergeAppearanceSettings(state.budgetSettings, settings) || settings
+    if (budgetSettingsEqual(state.budgetSettings, next)) return
+    state.budgetSettings = next
+    saveCachedAppearanceSettings(state.budgetSettings)
+}
 
 const initialState = {
     dashboard       : null,
@@ -18,7 +32,7 @@ const initialState = {
     viewCurrency    : '',
     selectedMonth   : new Date().getMonth() + 1,
     selectedYear    : new Date().getFullYear(),
-    budgetSettings  : null,
+    budgetSettings  : loadCachedAppearanceSettings(),
     sharedUsers     : [],
     sharedBudgets   : [],
     viewingBudgetOwner: null,
@@ -31,6 +45,8 @@ const initialState = {
     isGoalsLoading  : false,
     isListsLoading  : false,
     isMutating      : false,
+    netWorthHistory : [],
+    categoryRules   : [],
 }
 
 // ==================== INITIAL LOAD (BATCHED) ====================
@@ -149,6 +165,38 @@ export const updateBudgetExpense = createAsyncThunk('budget/updateExpense', asyn
     } catch (err) {
         if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
         return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to update transaction' } })
+    }
+})
+
+export const restoreBudgetExpense = createAsyncThunk('budget/restoreExpense', async ({ id, ids, month, year, budgetOwnerId }, thunkAPI) => {
+    try {
+        const payload = { month, year, ids }
+        if (budgetOwnerId) payload.budgetOwnerId = budgetOwnerId
+        const response = id
+            ? await api.restoreBudgetExpense(id, payload)
+            : await api.restoreBudgetExpenses(payload)
+        return response
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to restore transaction' } })
+    }
+})
+
+export const getNetWorthHistory = createAsyncThunk('budget/getNetWorthHistory', async (params, thunkAPI) => {
+    try {
+        return await api.getNetWorthHistory(params)
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to load net worth history' } })
+    }
+})
+
+export const getCategoryRules = createAsyncThunk('budget/getCategoryRules', async (params, thunkAPI) => {
+    try {
+        return await api.getCategoryRules(params)
+    } catch (err) {
+        if (err.response?.data) return thunkAPI.rejectWithValue(err.response.data)
+        return thunkAPI.rejectWithValue({ alert: { variant: 'danger', message: 'Failed to load category rules' } })
     }
 })
 
@@ -660,7 +708,9 @@ export const budgetSlice = createSlice({
             state.exchangeRates = r.exchangeRates.rates
             state.liveRates = r.exchangeRates.liveRates
             state.baseCurrency = r.exchangeRates.baseCurrency || 'PHP'
-            if (r.exchangeRates.budgetSettings) state.budgetSettings = r.exchangeRates.budgetSettings
+            if (r.exchangeRates.budgetSettings) applyBudgetSettings(state, r.exchangeRates.budgetSettings)
+            if (Array.isArray(r.categoryRules)) state.categoryRules = r.categoryRules
+            if (r.netWorthHistory) state.netWorthHistory = r.netWorthHistory
             state.isLoading = false
             state.isCategoriesLoading = false
             state.isExpensesLoading = false
@@ -756,6 +806,16 @@ export const budgetSlice = createSlice({
             state.alert = action.payload.data.alert
         })
         builder.addCase(deleteBudgetExpense.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
+        builder.addCase(restoreBudgetExpense.fulfilled, (state, action) => {
+            state.expenses = action.payload.data.result
+            state.alert = action.payload.data.alert || {}
+        })
+        builder.addCase(getNetWorthHistory.fulfilled, (state, action) => {
+            state.netWorthHistory = action.payload.data.result?.history || []
+        })
+        builder.addCase(getCategoryRules.fulfilled, (state, action) => {
+            state.categoryRules = action.payload.data.result || []
+        })
 
         builder.addCase(bulkDeleteBudgetExpenses.fulfilled, (state, action) => {
             state.expenses = action.payload.data.result
@@ -792,7 +852,7 @@ export const budgetSlice = createSlice({
             state.exchangeRates = action.payload.data.result.rates
             state.liveRates = action.payload.data.result.liveRates
             state.baseCurrency = action.payload.data.result.baseCurrency || 'PHP'
-            if (action.payload.data.result.budgetSettings) state.budgetSettings = action.payload.data.result.budgetSettings
+            if (action.payload.data.result.budgetSettings) applyBudgetSettings(state, action.payload.data.result.budgetSettings)
         })
         builder.addCase(getExchangeRates.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
 
@@ -812,7 +872,7 @@ export const budgetSlice = createSlice({
 
         // Budget Settings
         builder.addCase(saveBudgetSettings.fulfilled, (state, action) => {
-            state.budgetSettings = action.payload.data.result.budgetSettings
+            applyBudgetSettings(state, action.payload.data.result.budgetSettings)
             state.alert = action.payload.data.alert
         })
         builder.addCase(saveBudgetSettings.rejected, (state, action) => { state.alert = action.payload?.alert || {} })
@@ -1052,15 +1112,18 @@ export const budgetSlice = createSlice({
             if (d.rates !== undefined) state.exchangeRates = d.rates
             if (d.liveRates !== undefined) state.liveRates = d.liveRates
             if (d.baseCurrency) state.baseCurrency = d.baseCurrency
-            if (d.budgetSettings) state.budgetSettings = d.budgetSettings
+            if (d.budgetSettings) applyBudgetSettings(state, d.budgetSettings)
         },
         setViewCurrency: (state, action) => { state.viewCurrency = action.payload },
         setSelectedMonth: (state, action) => { state.selectedMonth = action.payload },
         setSelectedYear: (state, action) => { state.selectedYear = action.payload },
         setSharedUsers: (state, action) => { state.sharedUsers = action.payload },
+        patchBudgetSettings: (state, action) => {
+            applyBudgetSettings(state, { ...(state.budgetSettings || {}), ...action.payload })
+        },
     },
 })
 
-export const { clearAlert, clearSearchResults, setViewingBudgetOwner, setExpenses, setCategories, setDashboard, setSavings, setSavingsHistory, setDebts, setBudgetLists, setGoals, setExchangeRatesData, setSharedUsers, setViewCurrency, setSelectedMonth, setSelectedYear } = budgetSlice.actions
+export const { clearAlert, clearSearchResults, setViewingBudgetOwner, setExpenses, setCategories, setDashboard, setSavings, setSavingsHistory, setDebts, setBudgetLists, setGoals, setExchangeRatesData, setSharedUsers, setViewCurrency, setSelectedMonth, setSelectedYear, patchBudgetSettings } = budgetSlice.actions
 
 export default budgetSlice.reducer

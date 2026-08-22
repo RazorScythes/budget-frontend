@@ -1,6 +1,5 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-    faWallet,
     faMoon,
     faSun,
     faRightFromBracket,
@@ -27,29 +26,23 @@ import {
     faCheckCircle,
     faFilePdf,
     faCogs,
+    faBars,
 } from '@fortawesome/free-solid-svg-icons'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { logout } from '../../actions/auth'
+import { logout, logoutUser } from '../../actions/auth'
 import { searchBudgetExpenses, clearSearchResults } from '../../actions/budget'
 import { useDispatch, useSelector } from 'react-redux'
 import { main, dark, light } from '../../style'
 import { MONTHS, CURRENCIES, VALID_TABS } from '../Pages/Budget/constants'
+import { TAB_META } from '../Layout/budgetTabNav'
 import { buildExchangeRates, computeMonthlyStats, getActiveViewCurrency } from '../../utils/budgetCurrency'
 import Avatar from '../../assets/avatar.webp'
 
-const TAB_META = {
-    dashboard: { label: 'Dashboard', icon: faChartPie, hint: 'Overview & insights' },
-    daily: { label: 'Daily Expenses', icon: faCalendarDay, hint: 'Log & track spending' },
-    monthly: { label: 'Monthly Budget', icon: faCalendarAlt, hint: 'Plan your month' },
-    categories: { label: 'Categories', icon: faTags, hint: 'Review spending' },
-    savings: { label: 'Savings', icon: faPiggyBank, hint: 'Grow your savings' },
-    debts: { label: 'Debts', icon: faHandHoldingUsd, hint: 'Manage payments' },
-    lists: { label: 'Lists', icon: faListAlt, hint: 'Shopping & wishlists' },
-    goals: { label: 'Goals', icon: faCheckCircle, hint: 'Track your goals' },
-    summary: { label: 'Summary', icon: faFilePdf, hint: 'Reports & export' },
-    settings: { label: 'Settings', icon: faCogs, hint: 'Preferences & layout' },
-}
+const FAVICON = '/favicon.ico'
+
+const navTitleCls = (isLight) => isLight ? 'text-sm font-semibold text-slate-800' : 'text-sm font-semibold text-white'
+const navDescCls = (isLight) => isLight ? 'text-xs text-slate-500' : 'text-xs text-gray-500'
 
 const formatMoney = (value, currencyCode = 'PHP') => {
     const cur = CURRENCIES.find(c => c.code === currencyCode) || CURRENCIES[0]
@@ -168,7 +161,7 @@ const ProfileDropdown = ({
     </div>
 )
 
-const Navbar = ({ theme, setTheme, setUser }) => {
+const Navbar = ({ theme, setTheme, setUser, onMenuToggle, sidebarLayout = false }) => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
     const location = useLocation()
@@ -235,7 +228,7 @@ const Navbar = ({ theme, setTheme, setUser }) => {
         const handleClickOutside = (e) => {
             if (profileRef.current && !profileRef.current.contains(e.target)) setMenuOpen(false)
             if (quickRef.current && !quickRef.current.contains(e.target)) setQuickOpen(false)
-            if (searchOpen && searchRef.current && !searchRef.current.contains(e.target) && !e.target.closest('[data-search-toggle]')) {
+            if (searchOpen && searchRef.current && !searchRef.current.contains(e.target)) {
                 setSearchOpen(false)
             }
         }
@@ -261,11 +254,13 @@ const Navbar = ({ theme, setTheme, setUser }) => {
     }
 
     const signOut = () => {
-        dispatch(logout())
-        setLocalUser(null)
-        setAvatar(null)
-        if (setUser) setUser(null)
-        navigate('/login')
+        dispatch(logoutUser()).finally(() => {
+            dispatch(logout())
+            setLocalUser(null)
+            setAvatar(null)
+            if (setUser) setUser(null)
+            navigate('/login')
+        })
     }
 
     const jumpTo = (tab, extra = {}) => {
@@ -349,21 +344,32 @@ const Navbar = ({ theme, setTheme, setUser }) => {
         <header className={`${main.font} sticky top-0 z-50 w-full transition-all ${isLight ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-sm' : 'bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-[#1f1f1f] shadow-lg shadow-black/30'}`}>
             <div className={`h-px w-full ${isLight ? 'bg-gradient-to-r from-transparent via-blue-400/60 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-500/40 to-transparent'}`} />
 
-            <div className="max-w-[1550px] mx-auto px-3 sm:px-6 lg:px-8">
+            <div className={`w-full transition-[max-width,padding] duration-300 ease-out ${sidebarLayout ? 'max-w-none px-3 sm:px-4 lg:px-5' : 'max-w-[1550px] mx-auto px-3 sm:px-6 lg:px-8'}`}>
                 {/* Main bar */}
                 <div className="flex items-center justify-between gap-2 sm:gap-4 min-h-[56px] sm:min-h-[64px] py-2 sm:py-0">
-                    {/* Left: brand + page context */}
+                    {/* Left: menu + brand + page context */}
                     <div className="flex items-stretch min-w-0 flex-1">
+                        {onMenuToggle && (
+                        <button
+                            type="button"
+                            onClick={onMenuToggle}
+                            className={`lg:hidden w-9 h-9 mr-2 rounded-xl flex items-center justify-center shrink-0 ${isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-gray-300 hover:bg-[#161616]'}`}
+                            aria-label="Open menu"
+                            aria-expanded={false}
+                        >
+                            <FontAwesomeIcon icon={faBars} className="text-sm" />
+                        </button>
+                        )}
                         <Link
                             to="/budget"
                             className={`flex items-center gap-2.5 pr-3 sm:pr-4 shrink-0 group border-r border-solid ${isLight ? 'border-slate-200/80' : 'border-[#252525]'}`}
                         >
-                            <div className={`w-9 h-9 sm:w-[38px] sm:h-[38px] rounded-xl flex items-center justify-center transition-all duration-200 group-hover:brightness-110 ${isLight ? 'bg-gradient-to-br from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-200/50' : 'bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-lg shadow-blue-950/50'}`}>
-                                <FontAwesomeIcon icon={faWallet} className="text-sm" />
+                            <div className={`w-9 h-9 sm:w-[38px] sm:h-[38px] rounded-xl overflow-hidden shrink-0 ring-1 ring-inset transition-transform duration-200 group-hover:scale-[1.02] ${isLight ? 'ring-slate-200/80 bg-white' : 'ring-[#2a2a2a] bg-[#141414]'}`}>
+                                <img src={FAVICON} alt="Budget" className="w-full h-full object-cover" />
                             </div>
                             <div className="min-w-0 hidden md:block">
-                                <p className={`font-bold text-sm leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>Budget</p>
-                                <p className={`text-[10px] mt-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Finance tracker</p>
+                                <p className={`leading-tight ${navTitleCls(isLight)}`}>Budget</p>
+                                <p className={`mt-0.5 leading-snug ${navDescCls(isLight)}`}>Finance tracker</p>
                             </div>
                         </Link>
 
@@ -373,8 +379,8 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                                 <FontAwesomeIcon icon={activeIcon} className="text-xs" />
                             </div>
                             <div className="min-w-0">
-                                <p className={`text-[13px] font-semibold truncate leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>{activeLabel}</p>
-                                <p className={`text-[10px] truncate mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                <p className={`truncate leading-tight ${navTitleCls(isLight)}`}>{activeLabel}</p>
+                                <p className={`truncate mt-0.5 leading-snug ${navDescCls(isLight)}`}>
                                     {monthLabel} · {currencyLabel}
                                 </p>
                             </div>
@@ -382,26 +388,26 @@ const Navbar = ({ theme, setTheme, setUser }) => {
 
                         {/* Desktop context */}
                         <div className="hidden sm:flex items-center gap-3 pl-4 min-w-0 flex-1">
-                            <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/12 text-blue-400'}`}>
-                                <FontAwesomeIcon icon={activeIcon} className="text-sm" />
+                            <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/12 text-blue-400'}`}>
+                                <FontAwesomeIcon icon={activeIcon} className="text-xs" />
                                 <span className={`absolute -bottom-px left-2 right-2 h-0.5 rounded-full ${isLight ? 'bg-blue-500' : 'bg-blue-400'}`} />
                             </div>
 
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <h2 className={`text-[15px] sm:text-base font-semibold truncate tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                    <h2 className={`truncate leading-tight ${navTitleCls(isLight)}`}>
                                         {activeLabel}
                                     </h2>
                                     {viewingBudgetOwner && (
-                                        <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${isLight ? 'text-amber-700 bg-amber-50' : 'text-amber-400 bg-amber-500/10'}`}>
+                                        <span className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded ${isLight ? 'text-amber-700 bg-amber-50' : 'text-amber-400 bg-amber-500/10'}`}>
                                             Shared
                                         </span>
                                     )}
                                 </div>
-                                <p className={`text-[11px] truncate mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
-                                    <span className={`font-medium ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>{monthLabel}</span>
+                                <p className={`truncate mt-0.5 leading-snug ${navDescCls(isLight)}`}>
+                                    <span className={isLight ? 'text-slate-600' : 'text-gray-400'}>{monthLabel}</span>
                                     <span className="mx-2 opacity-30">|</span>
-                                    <span className={`font-semibold tabular-nums ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>{currencyLabel}</span>
+                                    <span className={`font-medium tabular-nums ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>{currencyLabel}</span>
                                     <span className="mx-2 opacity-30">|</span>
                                     <span>{contextHint}</span>
                                 </p>
@@ -420,10 +426,10 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                                 key={item.key}
                                 className={`flex items-center gap-2 px-4 py-2 ${i > 0 ? (isLight ? 'border-l border-slate-200/80' : 'border-l border-[#252525]') : ''}`}
                             >
-                                <FontAwesomeIcon icon={item.icon} className={`text-[10px] ${statTone(item.key === 'balance' ? 'balance' : item.key)} opacity-80`} />
+                                <FontAwesomeIcon icon={item.icon} className={`text-xs ${statTone(item.key === 'balance' ? 'balance' : item.key)} opacity-80`} />
                                 <div>
-                                    <p className={`text-[9px] uppercase tracking-wider font-semibold ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{item.label}</p>
-                                    <p className={`text-xs font-bold tabular-nums leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
+                                    <p className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{item.label}</p>
+                                    <p className={`text-sm font-semibold tabular-nums leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
                                         {isLoading && !expenses?.length ? '—' : formatMoney(item.value, activeViewCurrency)}
                                     </p>
                                 </div>
@@ -466,15 +472,97 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                             )}
                         </div>
 
-                        <button
-                            type="button"
-                            data-search-toggle
-                            onClick={() => setSearchOpen((open) => !open)}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${searchOpen ? (isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-950/40 text-blue-400') : (isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#161616]')}`}
-                            title="Search"
-                        >
-                            <FontAwesomeIcon icon={faSearch} className="text-sm" />
-                        </button>
+                        <div className="relative" ref={searchRef}>
+                            <button
+                                type="button"
+                                onClick={() => setSearchOpen((open) => !open)}
+                                aria-expanded={searchOpen}
+                                aria-haspopup="dialog"
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${searchOpen ? (isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-950/40 text-blue-400') : (isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-gray-400 hover:bg-[#161616]')}`}
+                                title="Search"
+                            >
+                                <FontAwesomeIcon icon={faSearch} className="text-sm" />
+                            </button>
+
+                            {searchOpen && (
+                                <div className={`absolute right-0 top-full mt-2 w-[min(100vw-1.5rem,22rem)] rounded-xl border shadow-xl z-[70] overflow-hidden ${isLight ? 'bg-white border-slate-200' : 'bg-[#141414] border-[#2a2a2a]'}`}>
+                                    <form onSubmit={handleSearchSubmit} className={`relative p-3 border-b border-solid ${isLight ? 'border-slate-100' : 'border-[#222]'}`} onClick={(e) => e.stopPropagation()}>
+                                        <FontAwesomeIcon icon={faSearch} className={`absolute left-5 top-1/2 -translate-y-1/2 text-sm ${isLight ? 'text-blue-500' : 'text-blue-400'}`} />
+                                        <input
+                                            type="text"
+                                            value={searchKey}
+                                            onChange={(e) => handleSearchInput(e.target.value)}
+                                            autoFocus
+                                            placeholder="Search transactions..."
+                                            className={`w-full pl-9 pr-20 py-2 rounded-lg text-sm border outline-none ${isLight ? `${light.input} border-slate-200` : `${dark.input} border-[#333]`}`}
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={searchKey.trim().length < 2}
+                                            className={`absolute right-4 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                                        >
+                                            Go
+                                        </button>
+                                    </form>
+
+                                    {searchKey.trim().length > 0 && searchKey.trim().length < 2 && (
+                                        <p className={`px-3 py-2 text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Type at least 2 characters</p>
+                                    )}
+
+                                    {searchKey.trim().length >= 2 && (
+                                        <div className="max-h-72 overflow-y-auto">
+                                            {isSearching ? (
+                                                <div className="flex items-center justify-center gap-2 py-6">
+                                                    <FontAwesomeIcon icon={faSpinner} className={`animate-spin text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
+                                                    <span className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Searching...</span>
+                                                </div>
+                                            ) : searchResults?.length > 0 ? (
+                                                <>
+                                                    <div className={`px-3 py-2 border-b flex items-center justify-between ${isLight ? 'border-slate-100 bg-slate-50' : 'border-[#222] bg-[#111]'}`}>
+                                                        <span className={`text-[11px] font-semibold uppercase tracking-wide ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                            {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openFullSearch()}
+                                                            className={`text-[11px] font-medium ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
+                                                        >
+                                                            View all →
+                                                        </button>
+                                                    </div>
+                                                    {searchResults.slice(0, 8).map((txn) => (
+                                                        <button
+                                                            key={txn._id}
+                                                            type="button"
+                                                            onClick={() => openFullSearch(searchKey)}
+                                                            className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors border-b last:border-b-0 ${isLight ? 'hover:bg-blue-50 border-slate-50' : 'hover:bg-[#1a1a1a] border-[#1c1c1c]'}`}
+                                                        >
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className={`text-sm font-medium truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>{txn.description}</p>
+                                                                <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                                    {new Date(txn.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                    {txn.category?.name ? ` · ${txn.category.name}` : ''}
+                                                                </p>
+                                                            </div>
+                                                            <span className={`text-sm font-semibold tabular-nums shrink-0 ${txn.type === 'income' ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                {txn.type === 'income' ? '+' : '-'}{formatTxn(txn.amount, txn.currency || activeViewCurrency)}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center py-6 gap-1.5 px-4">
+                                                    <FontAwesomeIcon icon={faSearch} className={`text-lg ${isLight ? 'text-slate-300' : 'text-gray-600'}`} />
+                                                    <span className={`text-xs text-center ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                        No results for "{searchKey.trim()}"
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         <button
                             type="button"
@@ -530,86 +618,6 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                     </div>
                 </div>
 
-                {/* Search expand + live results */}
-                {searchOpen && (
-                    <div className="pb-3 relative" ref={searchRef}>
-                        <form onSubmit={handleSearchSubmit} className="relative">
-                            <FontAwesomeIcon icon={faSearch} className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm ${isLight ? 'text-blue-500' : 'text-blue-400'}`} />
-                            <input
-                                type="text"
-                                value={searchKey}
-                                onChange={(e) => handleSearchInput(e.target.value)}
-                                autoFocus
-                                placeholder="Search transactions (min. 2 characters)..."
-                                className={`w-full pl-10 pr-24 py-2.5 rounded-xl text-sm border outline-none ${isLight ? `${light.input} border-slate-200` : `${dark.input} border-[#333]`}`}
-                            />
-                            <button
-                                type="submit"
-                                disabled={searchKey.trim().length < 2}
-                                className={`absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
-                            >
-                                Search
-                            </button>
-                        </form>
-
-                        {searchKey.trim().length >= 2 && (
-                            <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl overflow-hidden z-50 max-h-72 overflow-y-auto ${isLight ? 'bg-white border-slate-200' : 'bg-[#141414] border-[#2a2a2a]'}`}>
-                                {isSearching ? (
-                                    <div className="flex items-center justify-center gap-2 py-6">
-                                        <FontAwesomeIcon icon={faSpinner} className={`animate-spin text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`} />
-                                        <span className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Searching...</span>
-                                    </div>
-                                ) : searchResults?.length > 0 ? (
-                                    <>
-                                        <div className={`px-3 py-2 border-b flex items-center justify-between ${isLight ? 'border-slate-100 bg-slate-50' : 'border-[#222] bg-[#111]'}`}>
-                                            <span className={`text-[11px] font-semibold uppercase tracking-wide ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-                                                {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => openFullSearch()}
-                                                className={`text-[11px] font-medium ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
-                                            >
-                                                View all in Daily →
-                                            </button>
-                                        </div>
-                                        {searchResults.slice(0, 8).map((txn) => (
-                                            <button
-                                                key={txn._id}
-                                                type="button"
-                                                onClick={() => openFullSearch(searchKey)}
-                                                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors border-b last:border-b-0 ${isLight ? 'hover:bg-blue-50 border-slate-50' : 'hover:bg-[#1a1a1a] border-[#1c1c1c]'}`}
-                                            >
-                                                <div className="min-w-0 flex-1">
-                                                    <p className={`text-sm font-medium truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>{txn.description}</p>
-                                                    <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                        {new Date(txn.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                        {txn.category?.name ? ` · ${txn.category.name}` : ''}
-                                                    </p>
-                                                </div>
-                                                <span className={`text-sm font-semibold tabular-nums shrink-0 ${txn.type === 'income' ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                    {txn.type === 'income' ? '+' : '-'}{formatTxn(txn.amount, txn.currency || activeViewCurrency)}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-6 gap-1.5 px-4">
-                                        <FontAwesomeIcon icon={faSearch} className={`text-lg ${isLight ? 'text-slate-300' : 'text-gray-600'}`} />
-                                        <span className={`text-xs text-center ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
-                                            No transactions found for "{searchKey.trim()}"
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {searchKey.trim().length > 0 && searchKey.trim().length < 2 && (
-                            <p className={`mt-1.5 text-[11px] px-1 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Type at least 2 characters to search</p>
-                        )}
-                    </div>
-                )}
-
                 {/* Mobile stats strip */}
                 <div className="md:hidden pb-3 space-y-2">
                     <div className={`grid grid-cols-3 gap-2 rounded-xl p-2.5 ${isLight ? 'bg-slate-50 border border-slate-200/80' : 'bg-[#111] border border-[#252525]'}`}>
@@ -619,15 +627,15 @@ const Navbar = ({ theme, setTheme, setUser }) => {
                             { l: 'Balance', v: stats.balance, t: 'balance' },
                         ].map(s => (
                             <div key={s.l} className="text-center min-w-0 px-0.5">
-                                <p className={`text-[9px] uppercase font-semibold tracking-wide truncate ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.l}</p>
-                                <p className={`text-[11px] sm:text-xs font-bold tabular-nums truncate ${statTone(s.t)}`}>
+                                <p className={`text-xs font-medium truncate ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{s.l}</p>
+                                <p className={`text-sm font-semibold tabular-nums truncate ${statTone(s.t)}`}>
                                     {isLoading && !expenses?.length ? '—' : formatMoney(s.v, activeViewCurrency)}
                                 </p>
                             </div>
                         ))}
                     </div>
                     {viewingBudgetOwner && (
-                        <p className={`text-[10px] text-center font-medium ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>
+                        <p className={`text-xs text-center font-medium ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>
                             Viewing shared budget · {viewingBudgetOwner.username}
                         </p>
                     )}

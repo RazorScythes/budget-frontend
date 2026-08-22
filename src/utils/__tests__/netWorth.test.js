@@ -15,6 +15,19 @@ describe('calcNetWorth', () => {
         expect(result.totalOwedToYou).toBe(500)
         expect(result.netWorth).toBe(8500)
     })
+
+    it('converts foreign-currency debts when rates are provided', () => {
+        const result = calcNetWorth({
+            savingsAccounts: [{ category: 'bank', total: 10000 }],
+            debts: [
+                { type: 'owe', status: 'active', total_amount: 100, amount_paid: 0, currency: 'USD' },
+            ],
+            rates: { USD: 0.02 },
+            baseCurrency: 'PHP',
+        })
+        expect(result.totalOwed).toBe(5000)
+        expect(result.netWorth).toBe(5000)
+    })
 })
 
 describe('calcMonthOverMonth', () => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { login, googleLogin } from "../actions/auth";
+import { login, googleLogin, verifyTwoFactorLogin } from "../actions/auth";
 import { useGoogleLogin } from '@react-oauth/google';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash, faSpinner } from '@fortawesome/free-solid-svg-icons';
@@ -87,6 +87,8 @@ const NewLogin = () => {
         password: ''
     })
 
+    const [twoFactorCode, setTwoFactorCode] = useState('')
+
     useEffect(() => {
         document.title = "Login"
 
@@ -115,7 +117,7 @@ const NewLogin = () => {
     }, [user])
 
     useEffect(() => {
-        if (!auth.data?.token) return
+        if (!auth.data?.result || auth.pending2FA) return
 
         const persistAndNavigate = async () => {
             if (save && form.username && form.password) {
@@ -136,7 +138,16 @@ const NewLogin = () => {
         }
 
         persistAndNavigate()
-    }, [auth.data?.token])
+    }, [auth.data?.result, auth.pending2FA])
+
+    const handleTwoFactorSubmit = (e) => {
+        e.preventDefault()
+        if (!auth.pendingToken || !twoFactorCode.trim()) return
+        dispatch(verifyTwoFactorLogin({
+            pendingToken: auth.pendingToken,
+            code: twoFactorCode.trim(),
+        }))
+    }
 
     useEffect(() => {
         if (auth.error) {
@@ -180,6 +191,27 @@ const NewLogin = () => {
                     </div>
 
                     <div className="bg-[#141414] border border-[#252525] rounded-2xl p-7 shadow-2xl shadow-black/40">
+                        {auth.pending2FA ? (
+                            <form onSubmit={handleTwoFactorSubmit} className="space-y-4">
+                                <p className="text-sm text-gray-400">Enter the 6-digit code from your authenticator app.</p>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    value={twoFactorCode}
+                                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    placeholder="000000"
+                                    className="w-full px-4 py-3 rounded-xl bg-[#1c1c1c] border border-[#2a2a2a] text-white text-center text-lg tracking-[0.4em] outline-none focus:border-blue-500/60"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={twoFactorCode.length !== 6 || auth.isLoading}
+                                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold disabled:opacity-60"
+                                >
+                                    Verify & Sign In
+                                </button>
+                            </form>
+                        ) : (
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
@@ -270,8 +302,9 @@ const NewLogin = () => {
                                 ) : 'Sign in'}
                             </button>
                         </form>
+                        )}
 
-                        {hasGoogleAuth && (
+                        {!auth.pending2FA && hasGoogleAuth && (
                             <GoogleLoginButton
                                 isLoading={isLoading}
                                 googleLoading={googleLoading}

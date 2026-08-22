@@ -10,7 +10,7 @@ import AuditLogPanel from '../AuditLogPanel'
 
 export default function SettingsDataPanel() {
     const {
-        isLight, card, cardP, descCls, sectionCls, templateStyles, btnPrimary, btnSecondary,
+        isLight, card, cardP, descCls, titleCls, metaCls, sectionCls, templateStyles, btnPrimary, btnSecondary,
         expenseStats, activeViewCurrency, setNotification, dispatch,
         expenses, month, year, monthlyBudgetData, formatCurrencyRaw,
     } = useSettings()
@@ -24,7 +24,7 @@ export default function SettingsDataPanel() {
                         <FontAwesomeIcon icon={faChartPie} className={`text-sm ${isLight ? 'text-cyan-500' : 'text-cyan-400'}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Current Month Stats</h3>
+                        <h3 className={titleCls}>Current Month Stats</h3>
                         <p className={descCls}>Transaction statistics for the selected month</p>
                     </div>
                 </div>
@@ -37,7 +37,7 @@ export default function SettingsDataPanel() {
                     ].map((s, i) => (
                         <div key={i} className={`text-center px-3 py-3 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-[#111]'}`}>
                             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                            <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.label}</p>
+                            <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.label}</p>
                         </div>
                     ))}
                 </div>
@@ -49,13 +49,13 @@ export default function SettingsDataPanel() {
                             {expenseStats.currencies.map(code => {
                                 const cur = CURRENCIES.find(c => c.code === code)
                                 return (
-                                    <span key={code} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg ${
+                                    <span key={code} className={`inline-flex items-center gap-1 text-sm font-medium px-2.5 py-1.5 rounded-lg ${
                                         code === activeViewCurrency
                                             ? templateStyles?.tabActive || (isLight ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white')
                                             : (isLight ? 'bg-slate-100 text-slate-600' : 'bg-[#1f1f1f] text-gray-400')
                                     }`}>
                                         {cur?.symbol || ''} {code}
-                                        {code === activeViewCurrency && <FontAwesomeIcon icon={faEye} className="text-[10px] ml-0.5" />}
+                                        {code === activeViewCurrency && <FontAwesomeIcon icon={faEye} className="text-xs ml-0.5" />}
                                     </span>
                                 )
                             })}
@@ -71,7 +71,7 @@ export default function SettingsDataPanel() {
                         <FontAwesomeIcon icon={faFileExport} className={`text-sm ${isLight ? 'text-emerald-500' : 'text-emerald-400'}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Full Backup</h3>
+                        <h3 className={titleCls}>Full Backup</h3>
                         <p className={descCls}>Export or restore all budget data as JSON</p>
                     </div>
                 </div>
@@ -129,8 +129,8 @@ export default function SettingsDataPanel() {
                         <FontAwesomeIcon icon={faHistory} className={`text-sm ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
                     </div>
                     <div>
-                        <h3 className={`text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>Monthly Snapshots</h3>
-                        <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Save a snapshot of current month's budget data</p>
+                        <h3 className={titleCls}>Monthly Snapshots</h3>
+                        <p className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Save a snapshot of current month's budget data</p>
                     </div>
                 </div>
                 {(() => {
@@ -162,7 +162,7 @@ export default function SettingsDataPanel() {
                                     <FontAwesomeIcon icon={faCheck} className="mr-1.5 text-xs" />
                                     {hasSnapshot ? 'Update Snapshot' : 'Save Snapshot'}
                                 </button>
-                                <span className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                <span className={`text-sm ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>
                                     {MONTHS[month - 1]} {year} — {expenses.length} transactions
                                 </span>
                             </div>
@@ -171,13 +171,13 @@ export default function SettingsDataPanel() {
                                     {snapshots.slice(0, 6).map(s => (
                                         <div key={s.key} className={`flex items-center justify-between px-3 py-2 rounded-lg ${isLight ? 'bg-slate-50' : 'bg-[#111]'}`}>
                                             <div>
-                                                <span className={`text-xs font-medium ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{MONTHS[s.month - 1]} {s.year}</span>
-                                                <span className={`text-[10px] ml-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.transactions} txns</span>
+                                                <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-gray-200'}`}>{MONTHS[s.month - 1]} {s.year}</span>
+                                                <span className={`text-sm ml-2 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{s.transactions} txns</span>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-[11px] text-emerald-500 font-medium">+{formatCurrencyRaw(s.totalIncome, activeViewCurrency)}</span>
-                                                <span className="text-[11px] text-red-500 font-medium">-{formatCurrencyRaw(s.totalExpense, activeViewCurrency)}</span>
-                                                <span className={`text-[11px] font-bold ${s.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyRaw(s.balance, activeViewCurrency)}</span>
+                                                <span className="text-sm text-emerald-500 font-medium">+{formatCurrencyRaw(s.totalIncome, activeViewCurrency)}</span>
+                                                <span className="text-sm text-red-500 font-medium">-{formatCurrencyRaw(s.totalExpense, activeViewCurrency)}</span>
+                                                <span className={`text-sm font-bold ${s.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyRaw(s.balance, activeViewCurrency)}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -189,7 +189,7 @@ export default function SettingsDataPanel() {
             </div></AnimateIn>
 
             {/* ─── Activity Log ─── */}
-            <AuditLogPanel isLight={isLight} card={card} cardP={cardP} descCls={descCls} />
+            <AuditLogPanel isLight={isLight} card={card} cardP={cardP} descCls={descCls} titleCls={titleCls} metaCls={metaCls} />
         </div>
     )
 }

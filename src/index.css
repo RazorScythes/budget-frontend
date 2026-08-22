@@ -5,6 +5,13 @@
 @tailwind components;
 @tailwind utilities;
 
+html[data-appearance-switch] *,
+html[data-appearance-switch] *::before,
+html[data-appearance-switch] *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 :root {
   --black-gradient: linear-gradient(
     144.39deg,
@@ -188,6 +195,56 @@ html[data-theme="dark"] {
 
 .custom-scroll::-webkit-scrollbar-track {
   background-color: #1C1C1C;
+}
+
+/* ─── Sidebar nav scrollbar (extra thin) ─── */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+[data-theme="dark"] .sidebar-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+[data-theme="light"] .sidebar-scroll {
+  scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 4px;
+}
+
+[data-theme="dark"] .sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+
+[data-theme="dark"] .sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+[data-theme="dark"] .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+[data-theme="light"] .sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.14);
+  border-radius: 9999px;
+}
+
+[data-theme="light"] .sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.24);
+}
+
+[data-theme="light"] .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.32);
 }
 
 @keyframes slide-to-left {
@@ -676,6 +733,62 @@ svg #fish6{
     transform: translateY(-3px);
   }
 }
+/* Page type scale: phones step down one size; tablet/desktop keep the share-modal standard.
+   Modals are portaled outside this wrapper, so they stay text-sm. */
+@media (max-width: 639.98px) {
+  .page-type-scale .text-xs {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+  }
+
+  .page-type-scale .text-sm {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .page-type-scale .text-base {
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+  }
+
+  .page-type-scale .text-lg {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .page-type-scale .text-xl {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  .page-type-scale .text-2xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  .page-type-scale .text-3xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .page-type-scale .text-lg {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  .page-type-scale .text-xl {
+    font-size: 1.375rem;
+    line-height: 1.875rem;
+  }
+
+  .page-type-scale .text-2xl {
+    font-size: 1.625rem;
+    line-height: 2rem;
+  }
+}
+
 @keyframes bounce {
   0%, 50%, 100% {
     -moz-transform: translateY(0);
